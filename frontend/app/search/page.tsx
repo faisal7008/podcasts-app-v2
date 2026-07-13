@@ -13,7 +13,7 @@ import { MiniPlayer } from "@/components/player/mini-player";
 import { FullPlayer } from "@/components/player/full-player";
 import { Queue } from "@/components/queue";
 import { PlayerProvider, usePlayer } from "@/components/player/player-provider";
-import { searchAll, podcasts } from "@/lib/mock-data";
+import { searchAll } from "@/lib/mock-data";
 import type { SearchTab, Episode } from "@/types/podcast";
 
 function SearchPageContent() {

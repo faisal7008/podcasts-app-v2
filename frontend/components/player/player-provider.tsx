@@ -68,6 +68,28 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     isMiniPlayerVisible: false,
   });
 
+  const playNextInternal = useCallback(() => {
+    setState((prev) => {
+      if (prev.queue.length > 0) {
+        const [next, ...rest] = prev.queue;
+        const audio = audioRef.current;
+        if (audio && next.episode.audioSrc) {
+          audio.src = next.episode.audioSrc;
+          audio.play().catch(() => {});
+        }
+        return {
+          ...prev,
+          currentEpisode: next.episode,
+          queue: rest,
+          isPlaying: true,
+          currentTime: 0,
+          isMiniPlayerVisible: true,
+        };
+      }
+      return prev;
+    });
+  }, []);
+
   // Initialize audio element on mount
   useEffect(() => {
     const audio = new Audio();
@@ -111,29 +133,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       audio.pause();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const playNextInternal = useCallback(() => {
-    setState((prev) => {
-      if (prev.queue.length > 0) {
-        const [next, ...rest] = prev.queue;
-        const audio = audioRef.current;
-        if (audio && next.episode.audioSrc) {
-          audio.src = next.episode.audioSrc;
-          audio.play().catch(() => {});
-        }
-        return {
-          ...prev,
-          currentEpisode: next.episode,
-          queue: rest,
-          isPlaying: true,
-          currentTime: 0,
-          isMiniPlayerVisible: true,
-        };
-      }
-      return prev;
-    });
-  }, []);
+  }, [playNextInternal]);
 
   const play = useCallback((episode: Episode) => {
     const audio = audioRef.current;
