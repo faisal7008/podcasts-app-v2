@@ -14,6 +14,15 @@ export const metadata: Metadata = {
   title: "Podcasts — Discover & Listen",
   description:
     "Discover, browse, and listen to your favorite podcasts. Explore trending channels, curated collections, and new episodes.",
+  icons: {
+    icon: [
+      { url: '/favicon-light.svg', media: '(prefers-color-scheme: light)' },
+      { url: '/favicon-dark.svg', media: '(prefers-color-scheme: dark)' },
+    ],
+    apple: [
+      { url: '/mobile-icon.svg' }
+    ]
+  },
   openGraph: {
     title: "Podcasts — Discover & Listen",
     description:
