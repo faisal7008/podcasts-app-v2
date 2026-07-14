@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { Play, MoreHorizontal } from "lucide-react";
+import { Play, Pause, MoreHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDuration, truncate } from "@/lib/utils";
+import { parseHtml, formatEpisodeTitle, formatEpisodeNumber } from "@/lib/sanitize";
+import { usePlayer } from "@/components/player/player-provider";
 import type { Episode } from "@/types/podcast";
 
 interface EpisodeRowProps {
@@ -15,39 +17,55 @@ interface EpisodeRowProps {
   className?: string;
 }
 
-/**
- * Single episode list item matching Figma's episode row style.
- * Shows number + title (18px bold), truncated description (14px muted),
- * date/duration metadata, and play/more buttons.
- */
 export function EpisodeRow({
   episode,
   onPlay,
   onMore,
   className,
 }: EpisodeRowProps) {
+  const player = usePlayer();
+  const isPlaying = player.currentEpisode?.id === episode.id && player.isPlaying;
+  const isActive = player.currentEpisode?.id === episode.id;
+
+  const handlePlay = () => {
+    if (isActive) {
+      player.togglePlay();
+    } else {
+      onPlay?.(episode);
+    }
+  };
+
+  const title = formatEpisodeTitle(episode.title);
+  const epNumber = formatEpisodeNumber(undefined, episode.number);
+
   return (
     <article
       className={cn(
-        "group flex items-start gap-3 py-4",
-        "transition-colors hover:bg-gray-50 rounded-lg px-2 -mx-2",
+        "group flex items-start gap-3 py-4 md:py-5 min-h-[64px]",
+        "transition-colors hover:bg-gray-50 rounded-lg px-3 -mx-3",
+        isActive && "bg-primary/5 border-l-2 border-primary",
         className
       )}
     >
       {/* Play button */}
       <button
-        onClick={() => onPlay?.(episode)}
+        onClick={handlePlay}
         className={cn(
           "flex-shrink-0 mt-0.5",
-          "flex h-10 w-10 items-center justify-center",
-          "rounded-full border border-divider bg-white",
-          "text-text-dark transition-all",
-          "hover:bg-surface-dark hover:text-white hover:border-surface-dark",
-          "active:scale-95"
+          "flex h-10 w-10 md:h-12 md:w-12 items-center justify-center",
+          "rounded-full border bg-white",
+          "transition-all active:scale-95",
+          isActive 
+            ? "border-primary text-primary" 
+            : "border-divider text-text-dark hover:bg-surface-dark hover:text-white hover:border-surface-dark"
         )}
-        aria-label={`Play ${episode.title}`}
+        aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
       >
-        <Play size={14} fill="currentColor" />
+        {isPlaying ? (
+          <Pause size={18} fill="currentColor" />
+        ) : (
+          <Play size={18} fill="currentColor" className="ml-1" />
+        )}
       </button>
 
       {/* Content */}
@@ -56,16 +74,27 @@ export function EpisodeRow({
           href={`/episode/${episode.id}`}
           className="block"
         >
-          <h4 className="text-subtitle-bold text-text-dark">
-            {episode.number}. {episode.title}
+          <h4 className={cn(
+            "text-subtitle-bold text-text-dark font-bold line-clamp-1",
+            isActive && "text-primary"
+          )}>
+            {epNumber ? `${epNumber} - ${title}` : title}
           </h4>
-          <p className="text-body text-text-muted mt-1 line-clamp-2">
-            {truncate(episode.description, 120)}
-          </p>
+          <div className="text-body text-text-muted mt-1 line-clamp-2 prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary">
+            {parseHtml(episode.description)}
+          </div>
         </Link>
         {/* Metadata */}
-        <p className="text-[12px] text-text-light mt-2">
+        <p className="text-[12px] text-text-light mt-2 font-medium">
           {formatDate(episode.date)} · {formatDuration(episode.duration)}
+          {isActive && player.duration > 0 && (
+            <span className="block mt-2 h-1 w-full max-w-[200px] bg-gray-200 rounded-full overflow-hidden">
+              <span 
+                className="block h-full bg-primary" 
+                style={{ width: `${(player.currentTime / player.duration) * 100}%` }}
+              />
+            </span>
+          )}
         </p>
       </div>
 
@@ -76,10 +105,10 @@ export function EpisodeRow({
           "flex-shrink-0 mt-1",
           "flex h-8 w-8 items-center justify-center",
           "rounded-full text-text-light",
-          "opacity-0 group-hover:opacity-100 transition-opacity",
+          "md:opacity-0 group-hover:opacity-100 transition-opacity",
           "hover:bg-gray-100 hover:text-text-dark"
         )}
-        aria-label={`More options for ${episode.title}`}
+        aria-label={`More options for ${title}`}
       >
         <MoreHorizontal size={18} />
       </button>

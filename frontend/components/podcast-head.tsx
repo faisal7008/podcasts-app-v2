@@ -1,6 +1,10 @@
+"use client";
+
+import { useState } from "react";
 import Image from "next/image";
 import { Share2, UserPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseHtml, formatCategory } from "@/lib/sanitize";
 import type { Podcast } from "@/types/podcast";
 
 interface PodcastHeadProps {
@@ -8,12 +12,10 @@ interface PodcastHeadProps {
   className?: string;
 }
 
-/**
- * Channel/podcast header with large artwork, title, description, and actions.
- * Matches Figma's "Podcasts Head" component.
- * Desktop: 898px × 474px. Mobile: 343px × 474px.
- */
 export function PodcastHead({ podcast, className }: PodcastHeadProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const category = formatCategory(podcast.category);
+
   return (
     <section className={cn("w-full", className)} aria-label={podcast.title}>
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
@@ -43,25 +45,42 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
         {/* Info */}
         <div className="flex flex-col gap-3 pt-2">
           {/* Category pill */}
-          <span className="inline-flex self-center md:self-start px-3 py-1 rounded-[var(--radius-sm)] bg-surface-dark text-white text-[12px] font-bold uppercase tracking-wider">
-            {podcast.category}
-          </span>
+          {category && (
+            <span className="inline-flex self-center md:self-start px-3 py-1 rounded-[var(--radius-sm)] bg-surface-dark text-white text-[12px] font-bold uppercase tracking-wider">
+              {category}
+            </span>
+          )}
 
           <h1 className="text-title text-text-dark text-center md:text-left">
             {podcast.title}
           </h1>
 
-          <p className="text-body text-text-primary text-center md:text-left line-clamp-4">
-            {podcast.description}
-          </p>
+          <div className="text-center md:text-left relative">
+            <div
+              className={cn(
+                "text-body text-text-primary prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary",
+                !isExpanded && "line-clamp-4"
+              )}
+            >
+              {parseHtml(podcast.description)}
+            </div>
+            {podcast.description?.length > 150 && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="text-primary font-medium mt-1 hover:underline text-sm"
+              >
+                {isExpanded ? "Show less" : "Read more"}
+              </button>
+            )}
+          </div>
 
           {/* Episode count */}
-          <p className="text-label text-text-dark mt-2">
+          <p className="text-label text-text-dark mt-2 text-center md:text-left">
             {podcast.episodeCount} AVAILABLE EPISODES
           </p>
 
           {/* Action buttons */}
-          <div className="flex items-center gap-6 mt-1">
+          <div className="flex items-center justify-center md:justify-start gap-6 mt-1">
             <button
               className="flex items-center gap-2 text-subtitle text-text-primary transition-opacity hover:opacity-70"
               aria-label="Follow this podcast"
