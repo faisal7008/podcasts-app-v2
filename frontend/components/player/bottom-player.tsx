@@ -189,7 +189,7 @@ export function BottomPlayer() {
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={0.2}
-            onDragEnd={(e, { offset, velocity }) => {
+            onDragEnd={(e: MouseEvent | TouchEvent | PointerEvent, { offset, velocity }: { offset: { x: number, y: number }, velocity: { x: number, y: number } }) => {
               if (offset.y > 100 || velocity.y > 500) {
                 player.closePlayer();
               }
