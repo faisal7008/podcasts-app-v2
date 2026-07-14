@@ -2,8 +2,7 @@
 
 import { ReactNode } from "react";
 import { PlayerProvider } from "@/components/player/player-provider";
-import { MiniPlayer } from "@/components/player/mini-player";
-import { FullPlayer } from "@/components/player/full-player";
+import { BottomPlayer } from "@/components/player/bottom-player";
 import { Queue } from "@/components/queue";
 import { usePathname } from "next/navigation";
 
@@ -19,8 +18,7 @@ export function GlobalPlayerWrapper({ children }: { children: ReactNode }) {
       </div>
       
       {/* Global player UI */}
-      <MiniPlayer />
-      <FullPlayer />
+      <BottomPlayer />
       <Queue />
     </PlayerProvider>
   );
