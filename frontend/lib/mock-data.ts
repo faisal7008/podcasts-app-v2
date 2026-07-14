@@ -9,7 +9,7 @@ export const podcasts: Podcast[] = [
     author: "POSTA",
     description:
       "A podcast where we discuss the latest in cinema, TV series, and pop culture. Every week we bring you fresh takes on what's trending.",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     episodeCount: 24,
     category: "Entertainment",
   },
@@ -19,7 +19,7 @@ export const podcasts: Podcast[] = [
     author: "Tech Networks",
     description:
       "Your daily dose of technology news, reviews, and deep dives into the world of software, hardware, and everything in between.",
-    artwork: "/images/podcast-2.jpg",
+    artwork: "/images/podcast-2.svg",
     episodeCount: 156,
     category: "Technology",
   },
@@ -29,7 +29,7 @@ export const podcasts: Podcast[] = [
     author: "Science Today",
     description:
       "Exploring the intersection of neuroscience and philosophy. How does the brain create consciousness? Join us on this journey.",
-    artwork: "/images/podcast-3.jpg",
+    artwork: "/images/podcast-3.svg",
     episodeCount: 89,
     category: "Science",
   },
@@ -39,7 +39,7 @@ export const podcasts: Podcast[] = [
     author: "Audio Collective",
     description:
       "Immersive audio documentaries that transport you to different corners of the world. Real stories, real people, real impact.",
-    artwork: "/images/podcast-4.jpg",
+    artwork: "/images/podcast-4.svg",
     episodeCount: 42,
     category: "Documentary",
   },
@@ -49,7 +49,7 @@ export const podcasts: Podcast[] = [
     author: "Media House",
     description:
       "A weekly roundup of cultural events, art exhibitions, music releases, and literary discussions from around the globe.",
-    artwork: "/images/podcast-5.jpg",
+    artwork: "/images/podcast-5.svg",
     episodeCount: 67,
     category: "Culture",
   },
@@ -59,7 +59,7 @@ export const podcasts: Podcast[] = [
     author: "Design Lab",
     description:
       "Conversations with designers, artists, and creative professionals about their process, inspiration, and the future of design.",
-    artwork: "/images/podcast-6.jpg",
+    artwork: "/images/podcast-6.svg",
     episodeCount: 35,
     category: "Design",
   },
@@ -69,7 +69,7 @@ export const podcasts: Podcast[] = [
     author: "Past & Present",
     description:
       "Delving into forgotten chapters of history. From ancient civilizations to modern turning points, we uncover what textbooks left out.",
-    artwork: "/images/podcast-7.jpg",
+    artwork: "/images/podcast-7.svg",
     episodeCount: 112,
     category: "History",
   },
@@ -79,7 +79,7 @@ export const podcasts: Podcast[] = [
     author: "Venture Voice",
     description:
       "Behind-the-scenes stories from founders who built companies from scratch. The failures, pivots, and breakthroughs that shaped them.",
-    artwork: "/images/podcast-8.jpg",
+    artwork: "/images/podcast-8.svg",
     episodeCount: 78,
     category: "Business",
   },
@@ -98,7 +98,7 @@ export const episodes: Episode[] = [
     duration: 6720,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -111,7 +111,7 @@ export const episodes: Episode[] = [
     duration: 5400,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -124,7 +124,7 @@ export const episodes: Episode[] = [
     duration: 4800,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -137,7 +137,7 @@ export const episodes: Episode[] = [
     duration: 7200,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -150,7 +150,7 @@ export const episodes: Episode[] = [
     duration: 5100,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -163,7 +163,7 @@ export const episodes: Episode[] = [
     duration: 6300,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -176,7 +176,7 @@ export const episodes: Episode[] = [
     duration: 5700,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -189,7 +189,7 @@ export const episodes: Episode[] = [
     duration: 4500,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -202,7 +202,7 @@ export const episodes: Episode[] = [
     duration: 4200,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
   {
@@ -215,7 +215,7 @@ export const episodes: Episode[] = [
     duration: 5400,
     podcastId: "p1",
     podcastTitle: "Burn Before Listening",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     audioSrc: "/audio/sample.mp3",
   },
 ];
@@ -233,7 +233,7 @@ export const techEpisodes: Episode[] = [
     duration: 3600,
     podcastId: "p2",
     podcastTitle: "The Daily Byte",
-    artwork: "/images/podcast-2.jpg",
+    artwork: "/images/podcast-2.svg",
   },
   {
     id: "te2",
@@ -245,7 +245,7 @@ export const techEpisodes: Episode[] = [
     duration: 4200,
     podcastId: "p2",
     podcastTitle: "The Daily Byte",
-    artwork: "/images/podcast-2.jpg",
+    artwork: "/images/podcast-2.svg",
   },
 ];
 
@@ -257,7 +257,7 @@ export const topChannels: Channel[] = [
     rank: 1,
     name: "Burn Before Listening",
     author: "POSTA",
-    artwork: "/images/podcast-1.jpg",
+    artwork: "/images/podcast-1.svg",
     category: "Entertainment",
   },
   {
@@ -265,7 +265,7 @@ export const topChannels: Channel[] = [
     rank: 2,
     name: "The Daily Byte",
     author: "Tech Networks",
-    artwork: "/images/podcast-2.jpg",
+    artwork: "/images/podcast-2.svg",
     category: "Technology",
   },
   {
@@ -273,7 +273,7 @@ export const topChannels: Channel[] = [
     rank: 3,
     name: "Mind & Matter",
     author: "Science Today",
-    artwork: "/images/podcast-3.jpg",
+    artwork: "/images/podcast-3.svg",
     category: "Science",
   },
   {
