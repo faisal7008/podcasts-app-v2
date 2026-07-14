@@ -94,6 +94,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
   useEffect(() => {
     const audio = new Audio();
     audio.volume = state.volume;
+    audio.preload = "none";
     audioRef.current = audio;
 
     const onTimeUpdate = () => {
