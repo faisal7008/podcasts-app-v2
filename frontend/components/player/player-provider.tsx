@@ -23,6 +23,7 @@ interface PlayerContextValue extends PlayerState {
   addToQueue: (episode: Episode) => void;
   removeFromQueue: (episodeId: string) => void;
   clearQueue: () => void;
+  reorderQueue: (newQueue: QueueItem[]) => void;
   playNext: () => void;
   openPlayer: () => void;
   closePlayer: () => void;

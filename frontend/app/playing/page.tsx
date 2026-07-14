@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/header";
 import { EpisodeHead } from "@/components/episode-head";
@@ -109,5 +109,9 @@ function PlayingPageContent() {
 }
 
 export default function PlayingPage() {
-  return <PlayingPageContent />;
+  return (
+    <Suspense>
+      <PlayingPageContent />
+    </Suspense>
+  );
 }

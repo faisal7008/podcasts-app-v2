@@ -100,8 +100,8 @@ export function Header({
               className="flex items-center gap-3"
               aria-label="Podcasts home"
             >
-              <img src="/favicon-light.svg" alt="Podcasts Logo" className="h-7 w-7 dark:hidden" />
-              <img src="/favicon-dark.svg" alt="Podcasts Logo" className="h-7 w-7 hidden dark:block" />
+              <img src="/favicon-dark.svg" alt="Podcasts Logo" className="h-7 w-7 dark:hidden" />
+              <img src="/favicon-light.svg" alt="Podcasts Logo" className="h-7 w-7 hidden dark:block" />
               <span className="text-heading text-text-dark font-bold text-xl tracking-tight flex items-center h-8">Podcasts</span>
             </Link>
           )}
