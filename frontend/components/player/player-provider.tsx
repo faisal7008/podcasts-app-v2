@@ -28,6 +28,7 @@ interface PlayerContextValue extends PlayerState {
   closePlayer: () => void;
   toggleQueue: () => void;
   toggleMiniPlayer: () => void;
+  showToast: (msg: string) => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -66,6 +67,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     isPlayerOpen: false,
     isQueueOpen: false,
     isMiniPlayerVisible: false,
+    toastMessage: null,
   });
 
   const playNextInternal = useCallback(() => {
@@ -205,13 +207,21 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     }
   }, []);
 
+  const showToast = useCallback((msg: string) => {
+    setState((prev) => ({ ...prev, toastMessage: msg }));
+    setTimeout(() => {
+      setState((prev) => (prev.toastMessage === msg ? { ...prev, toastMessage: null } : prev));
+    }, 3000);
+  }, []);
+
   const addToQueue = useCallback((episode: Episode) => {
     const item: QueueItem = { episode, addedAt: new Date().toISOString() };
     setState((prev) => ({
       ...prev,
       queue: [...prev.queue, item],
     }));
-  }, []);
+    showToast("Added to queue");
+  }, [showToast]);
 
   const removeFromQueue = useCallback((episodeId: string) => {
     setState((prev) => ({
@@ -222,6 +232,10 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
 
   const clearQueue = useCallback(() => {
     setState((prev) => ({ ...prev, queue: [] }));
+  }, []);
+
+  const reorderQueue = useCallback((newQueue: QueueItem[]) => {
+    setState((prev) => ({ ...prev, queue: newQueue }));
   }, []);
 
   const playNext = useCallback(() => {
@@ -240,7 +254,6 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     setState((prev) => ({
       ...prev,
       isQueueOpen: !prev.isQueueOpen,
-      isPlayerOpen: prev.isQueueOpen ? prev.isPlayerOpen : false,
     }));
   }, []);
 
@@ -264,11 +277,13 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     addToQueue,
     removeFromQueue,
     clearQueue,
+    reorderQueue,
     playNext,
     openPlayer,
     closePlayer,
     toggleQueue,
     toggleMiniPlayer,
+    showToast,
   };
 
   return (

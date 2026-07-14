@@ -1,8 +1,12 @@
+"use client";
+
 import Image from "next/image";
 import { Share2, Download, ListPlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDuration } from "@/lib/utils";
+import { parseHtml } from "@/lib/sanitize";
 import type { Episode } from "@/types/podcast";
+import { useState } from "react";
 
 interface EpisodeHeadProps {
   episode: Episode;
@@ -16,6 +20,7 @@ interface EpisodeHeadProps {
  * Desktop: 898px × 424px. Mobile: 343px × 424px.
  */
 export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
   return (
     <section className={cn("w-full", className)} aria-label={episode.title}>
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
@@ -28,6 +33,7 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
               fill
               className="object-cover"
               priority
+              sizes="(max-width: 768px) 180px, 200px"
             />
           </div>
           {/* Blurred shadow */}
@@ -38,6 +44,7 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
               fill
               className="object-cover blur-[40px]"
               aria-hidden="true"
+              sizes="(max-width: 768px) 180px, 200px"
             />
           </div>
         </div>
@@ -59,9 +66,27 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
           </p>
 
           {/* Description */}
-          <p className="text-body text-text-primary text-center md:text-left line-clamp-4">
-            {episode.description}
-          </p>
+          {/* <p className="text-body text-text-primary text-center md:text-left line-clamp-4">
+            {parseHtml(episode.description)}
+          </p> */}
+          <div className="text-center md:text-left relative">
+            <div
+              className={cn(
+                "text-body text-text-primary prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary",
+                !isExpanded && "line-clamp-4"
+              )}
+            >
+              {parseHtml(episode.description)}
+            </div>
+            {episode.description?.length > 150 && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="text-primary font-medium mt-1 hover:underline text-sm"
+              >
+                {isExpanded ? "Show less" : "Read more"}
+              </button>
+            )}
+          </div>
 
           {/* Action buttons */}
           <div className="flex items-center gap-6 mt-2">

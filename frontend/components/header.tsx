@@ -100,22 +100,7 @@ export function Header({
               className="flex items-center gap-2"
               aria-label="Podcasts home"
             >
-              {/* Logo mark */}
-              <div className="flex h-8 w-8 items-center justify-center rounded-[var(--radius-sm)] bg-surface-dark">
-                <svg
-                  width="16"
-                  height="16"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M8 1C4.134 1 1 4.134 1 8s3.134 7 7 7 7-3.134 7-7-3.134-7-7-7zm0 2.5a4.5 4.5 0 014.5 4.5A4.5 4.5 0 018 12.5 4.5 4.5 0 013.5 8 4.5 4.5 0 018 3.5zM8 6a2 2 0 00-2 2 2 2 0 002 2 2 2 0 002-2 2 2 0 00-2-2z"
-                    fill="white"
-                  />
-                </svg>
-              </div>
-              <span className="text-heading text-text-dark">Podcasts</span>
+              <span className="text-heading text-text-dark font-bold text-xl tracking-tight flex items-center h-8">Podcasts</span>
             </Link>
           )}
         </div>

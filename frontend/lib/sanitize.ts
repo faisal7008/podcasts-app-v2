@@ -8,6 +8,10 @@ import parse from "html-react-parser";
 export function sanitizeHtml(html: string): string {
   if (!html) return "";
   
+  if (typeof window === 'undefined') {
+    return html;
+  }
+  
   const cleanHtml = DOMPurify.sanitize(html, {
     ALLOWED_TAGS: ["p", "br", "em", "i", "strong", "b", "a"],
     ALLOWED_ATTR: ["href"],
@@ -44,18 +48,29 @@ export function formatCategory(category: string): string | null {
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(" ");
   
-  // If it's still looking like a raw enum or completely unknown, we can return null to hide it
-  // But generally, the above transformations will make it presentable.
   return clean;
 }
 
 /**
  * Cleans up buggy episode titles that have raw prefixes like "0. " or "1. ".
+ * Also removes duplicate podcast title prefixes (e.g., "PodcastName - Episode Title" -> "Episode Title").
  */
-export function formatEpisodeTitle(title: string): string {
+export function formatEpisodeTitle(title: string, podcastTitle?: string): string {
   if (!title) return "";
+  
+  let cleanTitle = title;
+  
   // Remove "0. " or "1. " at the beginning of titles if they exist
-  return title.replace(/^[0-9]+\.\s/, "");
+  cleanTitle = cleanTitle.replace(/^[0-9]+\.\s/, "");
+  
+  // Remove podcast name prefix if present
+  if (podcastTitle && cleanTitle.toLowerCase().startsWith(podcastTitle.toLowerCase() + " - ")) {
+    cleanTitle = cleanTitle.substring(podcastTitle.length + 3);
+  } else if (podcastTitle && cleanTitle.toLowerCase().startsWith(podcastTitle.toLowerCase() + ": ")) {
+    cleanTitle = cleanTitle.substring(podcastTitle.length + 2);
+  }
+  
+  return cleanTitle;
 }
 
 /**

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseHtml } from "@/lib/sanitize";
 import type { Podcast } from "@/types/podcast";
 
 interface MainCarouselProps {
@@ -43,6 +44,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
           className="object-cover scale-110 blur-[60px] opacity-40"
           aria-hidden="true"
           priority
+          sizes="100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-surface-dark/90 to-surface-dark/60" />
       </div>
@@ -68,6 +70,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
               fill
               className="object-cover"
               priority
+              sizes="(max-width: 768px) 180px, 192px"
             />
           </div>
           {/* Blurred shadow beneath artwork */}
@@ -78,6 +81,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
               fill
               className="object-cover blur-[20px]"
               aria-hidden="true"
+              sizes="(max-width: 768px) 180px, 192px"
             />
           </div>
         </div>
@@ -85,15 +89,15 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
         {/* Text info */}
         <div className="flex flex-col gap-3 text-center md:text-left">
           {/* Category pill */}
-          <span className="inline-flex self-center md:self-start px-3 py-1 rounded-[var(--radius-sm)] bg-white/20 text-white text-[12px] font-bold uppercase tracking-wider">
+          <span className="inline-flex self-center md:self-start px-3 py-1 rounded-[var(--radius-sm)] bg-white/20 text-white text-[12px] font-bold uppercase tracking-wider truncate max-w-[200px]">
             {podcast.category}
           </span>
 
           <h2 className="text-title text-white">{podcast.title}</h2>
 
-          <p className="text-body text-white/70 line-clamp-2 max-w-[500px]">
-            {podcast.description}
-          </p>
+          <div className="text-body text-white/70 line-clamp-2 max-w-[500px]">
+            {parseHtml(podcast.description)}
+          </div>
 
           {/* Actions */}
           <div className="mt-2 flex items-center gap-4 self-center md:self-start">

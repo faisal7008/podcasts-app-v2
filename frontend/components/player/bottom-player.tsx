@@ -14,9 +14,11 @@ import {
   ChevronUp,
   ListMusic,
   Share2,
+  Clock,
 } from "lucide-react";
 import { cn, formatPlayerTime } from "@/lib/utils";
 import { usePlayer } from "@/components/player/player-provider";
+import { QueuePanel } from "@/components/player/queue-panel";
 
 export function BottomPlayer() {
   const player = usePlayer();
@@ -72,15 +74,19 @@ export function BottomPlayer() {
           player.isPlayerOpen ? "translate-y-full" : "translate-y-0"
         )}
       >
-        {/* Progress bar (top edge) */}
-        <div className="absolute top-0 left-0 h-[2px] w-full bg-white/10">
+        {/* Mobile Progress bar (top edge) */}
+        <div className="absolute top-0 left-0 h-[3px] w-full bg-white/10 md:hidden cursor-pointer" onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const pos = (e.clientX - rect.left) / rect.width;
+          player.seek(pos * player.duration);
+        }}>
           <div
-            className="h-full bg-primary transition-all duration-200"
+            className="h-full bg-primary"
             style={{ width: `${progress}%` }}
           />
         </div>
 
-        <div className="flex items-center gap-3 px-4 h-[64px] md:h-[80px] lg:h-[90px] max-w-7xl mx-auto">
+        <div className="flex items-center gap-3 md:gap-4 px-4 h-[64px] md:h-[80px] lg:h-[90px] max-w-7xl mx-auto w-full">
           {/* Artwork */}
           <button
             onClick={player.openPlayer}
@@ -92,13 +98,14 @@ export function BottomPlayer() {
               alt={`${episode.title} cover`}
               fill
               className="object-cover"
+              sizes="(max-width: 768px) 40px, 48px"
             />
           </button>
 
           {/* Info */}
           <button
             onClick={player.openPlayer}
-            className="flex-1 min-w-0 text-left flex flex-col justify-center"
+            className="flex-1 md:flex-none md:w-[160px] lg:w-[220px] min-w-0 text-left flex flex-col justify-center"
           >
             <h4 className="text-[14px] font-bold text-white truncate">
               {episode.title}
@@ -108,65 +115,90 @@ export function BottomPlayer() {
             </p>
           </button>
 
-          {/* Controls - Mobile: Play only, Tablet/Desktop: Play + Skip */}
-          <div className="flex items-center gap-2 md:gap-4">
+          {/* Play/Skip Controls */}
+          <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
             <button
               onClick={() => player.skipBackward(15)}
-              className="hidden md:flex h-10 w-10 items-center justify-center rounded-full text-white/60 hover:text-white"
+              className="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:text-white transition-colors"
               aria-label="Skip back 15 seconds"
             >
-              <SkipBack size={20} />
+              <SkipBack size={18} />
             </button>
 
             <button
               onClick={player.togglePlay}
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-surface-dark hover:scale-105 transition-transform"
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-surface-dark hover:scale-105 active:scale-95 transition-transform flex-shrink-0"
               aria-label={player.isPlaying ? "Pause" : "Play"}
             >
               {player.isPlaying ? (
-                <Pause size={20} fill="currentColor" />
+                <Pause size={18} fill="currentColor" />
               ) : (
-                <Play size={20} fill="currentColor" className="ml-0.5" />
+                <Play size={18} fill="currentColor" className="ml-0.5" />
               )}
             </button>
 
             <button
               onClick={() => player.skipForward(30)}
-              className="hidden md:flex h-10 w-10 items-center justify-center rounded-full text-white/60 hover:text-white"
+              className="hidden md:flex h-9 w-9 items-center justify-center rounded-full text-white/60 hover:text-white transition-colors"
               aria-label="Skip forward 30 seconds"
             >
-              <SkipForward size={20} />
-            </button>
-
-            {/* Desktop Volume */}
-            <div className="hidden lg:flex items-center gap-2 ml-4 w-24">
-              <button
-                onClick={() => player.setVolume(player.volume > 0 ? 0 : 0.8)}
-                className="text-white/60 hover:text-white"
-                aria-label={player.volume > 0 ? "Mute" : "Unmute"}
-              >
-                {player.volume > 0 ? <Volume2 size={18} /> : <VolumeX size={18} />}
-              </button>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.01}
-                value={player.volume}
-                onChange={(e) => player.setVolume(Number(e.target.value))}
-                className="w-full h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full"
-                aria-label="Volume"
-              />
-            </div>
-            
-            <button
-              onClick={player.openPlayer}
-              className="md:hidden flex h-10 w-10 items-center justify-center rounded-full text-white/40 hover:text-white"
-              aria-label="Expand player"
-            >
-              <ChevronUp size={20} />
+              <SkipForward size={18} />
             </button>
           </div>
+
+          {/* Desktop Progress Bar */}
+          <div className="hidden md:flex flex-1 items-center gap-3 max-w-2xl mx-auto px-4" title={formatPlayerTime(player.currentTime)}>
+            <span className="text-[12px] font-mono text-white/50 w-10 text-right flex-shrink-0">
+              {formatPlayerTime(player.currentTime)}
+            </span>
+            <input
+              type="range"
+              min={0}
+              max={player.duration || 100}
+              value={player.currentTime}
+              onChange={(e) => player.seek(Number(e.target.value))}
+              className="w-full h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+              aria-label="Seek position"
+              style={{
+                background: `linear-gradient(to right, var(--color-primary) ${progress}%, rgba(255,255,255,0.2) ${progress}%)`,
+              }}
+            />
+            <span className="text-[12px] font-mono text-white/50 w-10 flex-shrink-0">
+              {formatPlayerTime(player.duration)}
+            </span>
+          </div>
+
+          {/* Desktop Volume */}
+          <div className="hidden lg:flex items-center gap-2 flex-shrink-0 w-28">
+            <button
+              onClick={() => player.setVolume(player.volume > 0 ? 0 : 0.8)}
+              className="text-white/60 hover:text-white transition-colors"
+              aria-label={player.volume > 0 ? "Mute" : "Unmute"}
+            >
+              {player.volume > 0 ? <Volume2 size={18} /> : <VolumeX size={18} />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={player.volume}
+              onChange={(e) => player.setVolume(Number(e.target.value))}
+              className="w-full h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+              aria-label="Volume"
+              style={{
+                background: `linear-gradient(to right, #fff ${player.volume * 100}%, rgba(255,255,255,0.2) ${player.volume * 100}%)`,
+              }}
+            />
+          </div>
+          
+          <button
+            onClick={player.openPlayer}
+            className="md:hidden flex h-10 w-10 items-center justify-center rounded-full text-white/40 hover:text-white"
+            aria-label="Expand player"
+          >
+            <ChevronUp size={20} />
+          </button>
         </div>
       </div>
 
@@ -214,10 +246,13 @@ export function BottomPlayer() {
               </div>
               <button
                 onClick={player.toggleQueue}
-                className="flex h-10 w-10 items-center justify-center rounded-full text-white/60 hover:text-white transition-colors"
+                className="flex items-center gap-2 h-10 px-4 rounded-full bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-colors text-sm font-medium"
                 aria-label="Show queue"
               >
-                <ListMusic size={22} />
+                <ListMusic size={18} />
+                <span>
+                  Queue {player.queue.length > 0 && `(${player.queue.length})`}
+                </span>
               </button>
             </div>
 
@@ -231,6 +266,7 @@ export function BottomPlayer() {
                     fill
                     className="object-cover"
                     priority
+                    sizes="(max-width: 768px) 320px, 400px"
                   />
                 </div>
               </div>
@@ -299,9 +335,20 @@ export function BottomPlayer() {
                 </div>
 
                 {/* Bottom controls */}
-                <div className="flex items-center justify-between px-8 lg:px-0 mt-8 mb-8">
-                  <div className="flex items-center gap-3 w-1/2">
-                    <button
+                <div className="flex items-center justify-between px-8 lg:px-0 mt-8 mb-8 flex-wrap gap-4">
+                  {/* Secondary Controls (Speed, Timer) */}
+                  <div className="flex items-center gap-6">
+                    <button className="text-[14px] font-bold text-white/60 hover:text-white transition-colors flex items-center justify-center w-8">
+                      1x
+                    </button>
+                    <button className="text-white/40 hover:text-white transition-colors" aria-label="Sleep Timer">
+                      <Clock size={20} />
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-6">
+                    <div className="hidden lg:flex items-center gap-3 w-32">
+                      <button
                       onClick={() => player.setVolume(player.volume > 0 ? 0 : 0.8)}
                       className="text-white/40 hover:text-white transition-colors"
                       aria-label={player.volume > 0 ? "Mute" : "Unmute"}
@@ -336,6 +383,9 @@ export function BottomPlayer() {
                 </div>
               </div>
             </div>
+          </div>
+            
+            <QueuePanel />
           </motion.div>
         )}
       </AnimatePresence>

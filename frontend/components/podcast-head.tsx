@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Share2, UserPlus } from "lucide-react";
+import { Share2, UserPlus, UserCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { parseHtml, formatCategory } from "@/lib/sanitize";
+import { usePlayer } from "@/components/player/player-provider";
 import type { Podcast } from "@/types/podcast";
 
 interface PodcastHeadProps {
@@ -14,7 +15,18 @@ interface PodcastHeadProps {
 
 export function PodcastHead({ podcast, className }: PodcastHeadProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const player = usePlayer();
   const category = formatCategory(podcast.category);
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      player.showToast("Link copied to clipboard!");
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <section className={cn("w-full", className)} aria-label={podcast.title}>
@@ -28,6 +40,7 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
               fill
               className="object-cover"
               priority
+              sizes="(max-width: 768px) 200px, 240px"
             />
           </div>
           {/* Blurred shadow */}
@@ -38,6 +51,7 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
               fill
               className="object-cover blur-[40px]"
               aria-hidden="true"
+              sizes="(max-width: 768px) 200px, 240px"
             />
           </div>
         </div>
@@ -46,7 +60,7 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
         <div className="flex flex-col gap-3 pt-2">
           {/* Category pill */}
           {category && (
-            <span className="inline-flex self-center md:self-start px-3 py-1 rounded-[var(--radius-sm)] bg-surface-dark text-white text-[12px] font-bold uppercase tracking-wider">
+            <span className="inline-flex self-center md:self-start px-3 py-1 rounded-[var(--radius-sm)] bg-surface-dark text-white text-[12px] font-bold uppercase tracking-wider truncate max-w-[250px]">
               {category}
             </span>
           )}
@@ -81,7 +95,7 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
 
           {/* Action buttons */}
           <div className="flex items-center justify-center md:justify-start gap-4 mt-2 flex-wrap">
-            <button
+            {/* <button
               className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-full transition-transform hover:scale-105 active:scale-95"
               aria-label="Play latest episode"
             >
@@ -89,15 +103,26 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
                 <polygon points="5 3 19 12 5 21 5 3"></polygon>
               </svg>
               <span>Play Latest</span>
-            </button>
+            </button> */}
             <button
-              className="flex items-center gap-2 px-5 py-2.5 border border-primary text-primary font-bold rounded-full transition-colors hover:bg-primary/10"
-              aria-label="Follow this podcast"
+              onClick={() => setIsFollowing(!isFollowing)}
+              className={cn(
+                "flex items-center gap-2 px-5 py-2.5 border font-bold rounded-full transition-colors",
+                isFollowing
+                  ? "border-divider text-text-muted hover:bg-gray-50"
+                  : "border-primary text-primary hover:bg-primary/10"
+              )}
+              aria-label={isFollowing ? "Unfollow this podcast" : "Follow this podcast"}
             >
-              <UserPlus size={18} strokeWidth={2} />
-              <span>Follow</span>
+              {isFollowing ? (
+                <UserCheck size={18} strokeWidth={2} />
+              ) : (
+                <UserPlus size={18} strokeWidth={2} />
+              )}
+              <span>{isFollowing ? "Following" : "Follow"}</span>
             </button>
             <button
+              onClick={handleShare}
               className="flex items-center gap-2 px-5 py-2.5 border border-divider text-text-dark font-bold rounded-full transition-colors hover:bg-gray-100"
               aria-label="Share this podcast"
             >

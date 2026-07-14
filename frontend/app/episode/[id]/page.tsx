@@ -81,10 +81,7 @@ function EpisodePageContent({ id }: { id: string }) {
         {/* More Episodes from the same podcast */}
         {moreEpisodes.length > 0 && (
           <>
-            <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-10">
-              <Divider />
-            </div>
-            <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px]">
+            <section className="mx-auto py-10 max-w-[1440px] px-4 md:px-[180px] lg:px-[271px]">
               <EpisodeList
                 episodes={moreEpisodes}
                 title="More Episodes"

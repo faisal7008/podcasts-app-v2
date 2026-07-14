@@ -1,10 +1,28 @@
 "use client";
 
 import { ReactNode } from "react";
-import { PlayerProvider } from "@/components/player/player-provider";
+import { PlayerProvider, usePlayer } from "@/components/player/player-provider";
 import { BottomPlayer } from "@/components/player/bottom-player";
-import { Queue } from "@/components/queue";
-import { usePathname } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+
+function ToastContainer() {
+  const { toastMessage } = usePlayer();
+  
+  return (
+    <AnimatePresence>
+      {toastMessage && (
+        <motion.div
+          initial={{ opacity: 0, y: 50, scale: 0.9 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          exit={{ opacity: 0, y: 20, scale: 0.9 }}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-full bg-primary text-white text-sm font-bold shadow-lg"
+        >
+          {toastMessage}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
 
 export function GlobalPlayerWrapper({ children }: { children: ReactNode }) {
   return (
@@ -19,7 +37,7 @@ export function GlobalPlayerWrapper({ children }: { children: ReactNode }) {
       
       {/* Global player UI */}
       <BottomPlayer />
-      <Queue />
+      <ToastContainer />
     </PlayerProvider>
   );
 }

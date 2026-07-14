@@ -62,19 +62,10 @@ export function EpisodeList({
 
   const visibleEpisodes = filteredEpisodes.slice(0, visibleCount);
 
-  // Intersection Observer for Infinite Scroll
-  const lastElementRef = useCallback(
-    (node: HTMLDivElement | null) => {
-      if (observerRef.current) observerRef.current.disconnect();
-      observerRef.current = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && visibleCount < filteredEpisodes.length) {
-          setVisibleCount((prev) => prev + 10);
-        }
-      });
-      if (node) observerRef.current.observe(node);
-    },
-    [visibleCount, filteredEpisodes.length]
-  );
+  // We can just rely on the button instead of Intersection Observer for this phase
+  const handleLoadMore = () => {
+    setVisibleCount((prev) => prev + 10);
+  };
 
   return (
     <section className={cn("w-full", className)} aria-label={title || "Episodes"}>
@@ -181,33 +172,37 @@ export function EpisodeList({
       )}
 
       {/* Divider */}
-      <Divider className="mb-4" />
+      <Divider className="mb-0" />
 
       {/* Episode rows */}
-      <div className="flex flex-col gap-2" role="list">
-        {visibleEpisodes.map((episode, i) => {
-          const isLast = i === visibleEpisodes.length - 1;
-          return (
-            <div key={episode.id} role="listitem" ref={isLast ? lastElementRef : null}>
-              <EpisodeRow
-                episode={episode}
-                onPlay={onPlay}
-                onMore={onMore}
-              />
-              {i < filteredEpisodes.length - 1 && (
-                <Divider className="ml-[60px]" />
-              )}
-            </div>
-          );
-        })}
+      <div className="flex flex-col gap-0" role="list">
+        {visibleEpisodes.map((episode, i) => (
+          <div key={episode.id} role="listitem">
+            <EpisodeRow
+              episode={episode}
+              onPlay={onPlay}
+              onMore={onMore}
+            />
+            {i < filteredEpisodes.length - 1 && (
+              <Divider />
+            )}
+          </div>
+        ))}
+        
         {filteredEpisodes.length === 0 && (
           <div className="py-12 text-center text-text-muted">
             <p>No episodes found.</p>
           </div>
         )}
+
         {visibleCount < filteredEpisodes.length && (
-          <div className="py-6 flex justify-center">
-            <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          <div className="py-8 flex justify-center">
+            <button 
+              onClick={handleLoadMore}
+              className="px-6 py-2.5 rounded-full border-2 border-gray-200 text-[14px] font-bold text-text-dark hover:border-text-dark hover:bg-gray-50 transition-colors"
+            >
+              More Episodes
+            </button>
           </div>
         )}
       </div>

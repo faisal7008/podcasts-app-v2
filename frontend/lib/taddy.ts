@@ -1,4 +1,5 @@
 import { Podcast, Episode, Channel } from "@/types/podcast";
+import { formatEpisodeTitle, formatCategory } from "@/lib/sanitize";
 
 const TADDY_API_URL = "https://api.taddy.org";
 
@@ -56,7 +57,7 @@ function transformPodcast(raw: Record<string, unknown>): Podcast {
     artwork: (raw.imageUrl as string) || "/images/placeholder.svg",
     episodeCount: (raw.totalEpisodesCount as number) || 0,
     category: Array.isArray(raw.genres) && raw.genres.length > 0
-      ? (raw.genres[0] as string)
+      ? formatCategory(raw.genres[0] as string) || "General"
       : "General",
   };
 }
@@ -66,17 +67,18 @@ function transformEpisode(
   podcastSeries?: Record<string, unknown>
 ): Episode {
   const series = (raw.podcastSeries ?? podcastSeries ?? {}) as Record<string, unknown>;
+  const podcastTitle = (series.name as string) || "";
   return {
     id: raw.uuid as string,
     number: (raw.episodeNumber as number) || 0,
-    title: (raw.name as string) || "Untitled Episode",
+    title: formatEpisodeTitle((raw.name as string) || "Untitled Episode", podcastTitle),
     description: (raw.description as string) || "",
     date: raw.datePublished
       ? new Date((raw.datePublished as number) * 1000).toISOString()
       : new Date().toISOString(),
     duration: (raw.duration as number) || 0,
     podcastId: (series.uuid as string) || "",
-    podcastTitle: (series.name as string) || "",
+    podcastTitle,
     artwork:
       (raw.imageUrl as string) ||
       (series.imageUrl as string) ||
@@ -96,7 +98,7 @@ function transformChannel(
     author: (raw.authorName as string) || "Unknown Author",
     artwork: (raw.imageUrl as string) || "/images/placeholder.svg",
     category: Array.isArray(raw.genres) && raw.genres.length > 0
-      ? (raw.genres[0] as string)
+      ? formatCategory(raw.genres[0] as string) || "General"
       : "General",
   };
 }

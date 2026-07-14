@@ -25,6 +25,27 @@ export interface Episode {
   audioSrc?: string;
 }
 
+export interface PlayerContextValue extends PlayerState {
+  play: (episode: Episode) => void;
+  pause: () => void;
+  resume: () => void;
+  togglePlay: () => void;
+  seek: (time: number) => void;
+  setVolume: (volume: number) => void;
+  skipForward: (seconds?: number) => void;
+  skipBackward: (seconds?: number) => void;
+  addToQueue: (episode: Episode) => void;
+  removeFromQueue: (episodeId: string) => void;
+  clearQueue: () => void;
+  reorderQueue: (newQueue: QueueItem[]) => void;
+  playNext: () => void;
+  openPlayer: () => void;
+  closePlayer: () => void;
+  toggleQueue: () => void;
+  toggleMiniPlayer: () => void;
+  showToast: (msg: string) => void;
+}
+
 /** Represents a top channel entry with ranking. */
 export interface Channel {
   id: string;
@@ -59,6 +80,7 @@ export interface PlayerState {
   isPlayerOpen: boolean;
   isQueueOpen: boolean;
   isMiniPlayerVisible: boolean;
+  toastMessage: string | null;
 }
 
 /** Sort options for episode lists. */

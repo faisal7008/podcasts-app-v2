@@ -39,6 +39,7 @@ export function TopChannels({ channels, className }: TopChannelsProps) {
               fill
               className="object-cover"
               loading="lazy"
+              sizes="48px"
             />
           </div>
 
