@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { SearchInput } from "@/components/search-input";
@@ -33,7 +33,7 @@ function SearchPageContent() {
       <Header variant="interior" backTitle="Search" backHref="/" />
 
       <main className="flex-1">
-        {/* Search Input — always visible (898×70 desktop / 343×70 mobile) */}
+        {/* Search Input */}
         <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
           <SearchInput
             value={query}
@@ -77,7 +77,7 @@ function SearchPageContent() {
         {query.trim().length > 2 && isLoading && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-12">
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-accent mb-4"></div>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-accent mb-4" />
               <h2 className="text-heading text-text-dark">Searching...</h2>
             </div>
           </section>
@@ -87,9 +87,9 @@ function SearchPageContent() {
         {isError && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-12">
             <div className="flex flex-col items-center justify-center py-20 text-center">
-              <h2 className="text-heading text-text-dark text-red-500">Error</h2>
+              <h2 className="text-heading text-red-500">Error</h2>
               <p className="text-body text-text-muted mt-2">
-                Failed to fetch search results. Check your API limits.
+                Failed to fetch search results. Please try again.
               </p>
             </div>
           </section>
@@ -107,10 +107,9 @@ function SearchPageContent() {
           </section>
         )}
 
-        {/* Results with heading + tabs (293×70px heading as in Figma) */}
+        {/* Results */}
         {hasResults && results && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
-            {/* Search Heading with tabs — matches Figma Heading (293×70) */}
             <SearchHeading
               query={query}
               activeTab={activeTab}
@@ -118,7 +117,7 @@ function SearchPageContent() {
               className="mb-8"
             />
 
-            {/* All tab — shows carousel + episode list (32px gap) */}
+            {/* All tab */}
             {activeTab === "all" && (
               <div className="flex flex-col gap-8">
                 {results.podcasts.length > 0 && (
@@ -138,7 +137,7 @@ function SearchPageContent() {
               </div>
             )}
 
-            {/* Channels tab — shows Podcasts Grid (898×727 desktop) */}
+            {/* Channels tab */}
             {activeTab === "channels" && (
               <div>
                 {results.podcasts.length > 0 ? (
@@ -151,7 +150,7 @@ function SearchPageContent() {
               </div>
             )}
 
-            {/* Episodes tab — shows Episode List (898×1405 desktop) */}
+            {/* Episodes tab */}
             {activeTab === "episodes" && (
               <div>
                 {results.episodes.length > 0 ? (

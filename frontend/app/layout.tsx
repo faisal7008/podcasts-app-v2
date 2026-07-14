@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Fira_Sans } from "next/font/google";
 import { GlobalPlayerWrapper } from "@/components/global-player-wrapper";
-import { QueryProvider } from "@/components/query-provider";
 import "./globals.css";
 
 const firaSans = Fira_Sans({
@@ -31,11 +30,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${firaSans.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
-        <QueryProvider>
-          <GlobalPlayerWrapper>
-            {children}
-          </GlobalPlayerWrapper>
-        </QueryProvider>
+        <GlobalPlayerWrapper>
+          {children}
+        </GlobalPlayerWrapper>
       </body>
     </html>
   );

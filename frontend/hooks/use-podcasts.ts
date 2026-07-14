@@ -1,46 +1,209 @@
-import { useQuery } from "@tanstack/react-query";
-import { Podcast, Episode, SearchResults } from "@/types/podcast";
+"use client";
 
-// Helper to fetch JSON and throw on error
+import { useState, useEffect, useCallback, useRef } from "react";
+import type { Podcast, Episode, Channel } from "@/types/podcast";
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
 async function fetchJson<T>(url: string): Promise<T> {
   const res = await fetch(url);
   if (!res.ok) {
-    const errorBody = await res.json().catch(() => ({}));
-    throw new Error(errorBody.error || `Failed to fetch from ${url}`);
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Failed to fetch ${url}`);
   }
   return res.json();
 }
 
-/**
- * Hook to search podcasts and episodes
- */
-export function useSearch(query: string) {
-  return useQuery<{ podcasts: Podcast[]; episodes: Episode[] }>({
-    queryKey: ["search", query],
-    queryFn: () => fetchJson(`/api/podcasts/search?q=${encodeURIComponent(query)}`),
-    enabled: !!query && query.length > 2, // Only run if query is long enough
-    staleTime: 1000 * 60 * 5, // 5 min
-  });
+interface AsyncState<T> {
+  data: T | null;
+  isLoading: boolean;
+  isError: boolean;
+  error: string | null;
 }
 
-/**
- * Hook to get a podcast and its episodes by ID
- */
+// ─── useSearch ──────────────────────────────────────────────────────────────
+
+export function useSearch(query: string, debounceMs = 400) {
+  const [state, setState] = useState<
+    AsyncState<{ podcasts: Podcast[]; episodes: Episode[] }>
+  >({ data: null, isLoading: false, isError: false, error: null });
+
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    if (!query || query.trim().length < 3) {
+      setState({ data: null, isLoading: false, isError: false, error: null });
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      // Cancel previous request
+      abortRef.current?.abort();
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      setState((prev) => ({ ...prev, isLoading: true, isError: false }));
+
+      try {
+        const data = await fetchJson<{
+          podcasts: Podcast[];
+          episodes: Episode[];
+        }>(`/api/podcasts/search?q=${encodeURIComponent(query)}`);
+
+        if (!controller.signal.aborted) {
+          setState({ data, isLoading: false, isError: false, error: null });
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setState({
+            data: null,
+            isLoading: false,
+            isError: true,
+            error: err instanceof Error ? err.message : "Search failed",
+          });
+        }
+      }
+    }, debounceMs);
+
+    return () => {
+      clearTimeout(timer);
+      abortRef.current?.abort();
+    };
+  }, [query, debounceMs]);
+
+  return state;
+}
+
+// ─── usePodcast ─────────────────────────────────────────────────────────────
+
 export function usePodcast(id: string) {
-  return useQuery<{ podcast: Podcast; episodes: Episode[] }>({
-    queryKey: ["podcast", id],
-    queryFn: () => fetchJson(`/api/podcasts/${encodeURIComponent(id)}`),
-    enabled: !!id,
-  });
+  const [state, setState] = useState<
+    AsyncState<{ podcast: Podcast; episodes: Episode[] }>
+  >({ data: null, isLoading: true, isError: false, error: null });
+
+  useEffect(() => {
+    if (!id) {
+      setState({ data: null, isLoading: false, isError: false, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    setState((prev) => ({ ...prev, isLoading: true }));
+
+    fetchJson<{ podcast: Podcast; episodes: Episode[] }>(
+      `/api/podcasts/${encodeURIComponent(id)}`
+    )
+      .then((data) => {
+        if (!cancelled) {
+          setState({ data, isLoading: false, isError: false, error: null });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({
+            data: null,
+            isLoading: false,
+            isError: true,
+            error: err instanceof Error ? err.message : "Failed to load podcast",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return state;
 }
 
-/**
- * Hook to get a single episode by ID
- */
+// ─── useEpisode ─────────────────────────────────────────────────────────────
+
 export function useEpisode(id: string) {
-  return useQuery<Episode>({
-    queryKey: ["episode", id],
-    queryFn: () => fetchJson(`/api/episodes/${encodeURIComponent(id)}`),
-    enabled: !!id,
+  const [state, setState] = useState<AsyncState<Episode>>({
+    data: null,
+    isLoading: true,
+    isError: false,
+    error: null,
   });
+
+  useEffect(() => {
+    if (!id) {
+      setState({ data: null, isLoading: false, isError: false, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    setState((prev) => ({ ...prev, isLoading: true }));
+
+    fetchJson<Episode>(`/api/episodes/${encodeURIComponent(id)}`)
+      .then((data) => {
+        if (!cancelled) {
+          setState({ data, isLoading: false, isError: false, error: null });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({
+            data: null,
+            isLoading: false,
+            isError: true,
+            error: err instanceof Error ? err.message : "Failed to load episode",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  return state;
+}
+
+// ─── useHomeData ────────────────────────────────────────────────────────────
+
+interface HomeData {
+  featured: Podcast[];
+  noteworthy: Podcast[];
+  trending: Podcast[];
+  trendingAlt: Podcast[];
+  topChannels: Channel[];
+}
+
+export function useHomeData() {
+  const [state, setState] = useState<AsyncState<HomeData>>({
+    data: null,
+    isLoading: true,
+    isError: false,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchJson<HomeData>("/api/podcasts/home")
+      .then((data) => {
+        if (!cancelled) {
+          setState({ data, isLoading: false, isError: false, error: null });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({
+            data: null,
+            isLoading: false,
+            isError: true,
+            error:
+              err instanceof Error ? err.message : "Failed to load home data",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return state;
 }

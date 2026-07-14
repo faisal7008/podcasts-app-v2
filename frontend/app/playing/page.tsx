@@ -6,15 +6,16 @@ import { Header } from "@/components/header";
 import { EpisodeHead } from "@/components/episode-head";
 import { EpisodeList } from "@/components/episode-list";
 import { usePlayer } from "@/components/player/player-provider";
-import { getEpisodeById, getEpisodesByPodcast } from "@/lib/mock-data";
+import { useEpisode, usePodcast } from "@/hooks/use-podcasts";
 import type { Episode } from "@/types/podcast";
 
 function PlayingPageContent() {
   const searchParams = useSearchParams();
-  const episodeId = searchParams.get("episode") || "e1";
+  const episodeId = searchParams.get("episode") || "";
   const player = usePlayer();
 
-  const episode = getEpisodeById(episodeId);
+  const { data: episode, isLoading, isError } = useEpisode(episodeId);
+  const { data: podcastData } = usePodcast(episode?.podcastId || "");
 
   // Auto-play on mount if not already playing
   useEffect(() => {
@@ -23,15 +24,29 @@ function PlayingPageContent() {
       player.openPlayer();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [episodeId]);
+  }, [episode]);
 
-  if (!episode) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen flex-col">
         <Header variant="interior" backTitle="Back" backHref="/" />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-title text-text-dark">Episode Not Found</h1>
+            <div className="h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-accent mb-4 mx-auto" />
+            <p className="text-body text-text-muted">Loading episode...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (isError || !episode) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header variant="interior" backTitle="Back" backHref="/" />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-title text-red-500">Episode Not Found</h1>
             <p className="text-body text-text-muted mt-2">
               The episode you&apos;re looking for doesn&apos;t exist.
             </p>
@@ -41,8 +56,8 @@ function PlayingPageContent() {
     );
   }
 
-  const moreEpisodes = getEpisodesByPodcast(episode.podcastId).filter(
-    (e) => e.id !== episode.id
+  const moreEpisodes = (podcastData?.episodes || []).filter(
+    (e: Episode) => e.id !== episode.id
   );
 
   const handlePlay = (ep: Episode) => {
@@ -56,8 +71,10 @@ function PlayingPageContent() {
       <div className={player.isPlayerOpen ? "md:pr-[348px]" : ""}>
         <Header
           variant="interior"
-          backTitle={episode.podcastTitle}
-          backHref={`/channel/${episode.podcastId}`}
+          backTitle={episode.podcastTitle || "Back"}
+          backHref={
+            episode.podcastId ? `/channel/${episode.podcastId}` : "/"
+          }
         />
       </div>
 
