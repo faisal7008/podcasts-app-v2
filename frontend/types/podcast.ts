@@ -62,7 +62,7 @@ export interface PlayerState {
 }
 
 /** Sort options for episode lists. */
-export type EpisodeSortOption = "newest" | "oldest" | "popular";
+export type EpisodeSortOption = "newest" | "oldest" | "longest" | "shortest";
 
 /** Search tab filter options. */
 export type SearchTab = "all" | "channels" | "episodes";

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { SlidersHorizontal, ChevronDown } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { SlidersHorizontal, ChevronDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EpisodeRow } from "@/components/episode-row";
 import { Divider } from "@/components/divider";
@@ -9,13 +9,9 @@ import type { Episode, EpisodeSortOption } from "@/types/podcast";
 
 interface EpisodeListProps {
   episodes: Episode[];
-  /** Title shown above the list. */
   title?: string;
-  /** Called when an episode play button is clicked. */
   onPlay?: (episode: Episode) => void;
-  /** Called when an episode more button is clicked. */
   onMore?: (episode: Episode) => void;
-  /** Show sort controls. */
   showSort?: boolean;
   className?: string;
 }
@@ -23,13 +19,10 @@ interface EpisodeListProps {
 const sortLabels: Record<EpisodeSortOption, string> = {
   newest: "Newest First",
   oldest: "Oldest First",
-  popular: "Most Popular",
+  longest: "Longest",
+  shortest: "Shortest",
 };
 
-/**
- * Episode list with optional sort controls.
- * Matches Figma's "Episode List" component.
- */
 export function EpisodeList({
   episodes,
   title,
@@ -39,116 +32,184 @@ export function EpisodeList({
   className,
 }: EpisodeListProps) {
   const [sortBy, setSortBy] = useState<EpisodeSortOption>("newest");
+  const [filterBy, setFilterBy] = useState<string>("all");
   const [showSortMenu, setShowSortMenu] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
+  const observerRef = useRef<IntersectionObserver | null>(null);
 
+  // Sorting
   const sortedEpisodes = [...episodes].sort((a, b) => {
     switch (sortBy) {
       case "newest":
         return new Date(b.date).getTime() - new Date(a.date).getTime();
       case "oldest":
         return new Date(a.date).getTime() - new Date(b.date).getTime();
-      case "popular":
-        return b.number - a.number;
+      case "longest":
+        return b.duration - a.duration;
+      case "shortest":
+        return a.duration - b.duration;
       default:
         return 0;
     }
   });
 
+  // Filtering (mock filter logic as metadata might be limited)
+  const filteredEpisodes = sortedEpisodes.filter((episode) => {
+    if (filterBy === "bonus") return episode.title.toLowerCase().includes("bonus");
+    if (filterBy === "trailer") return episode.title.toLowerCase().includes("trailer");
+    return true;
+  });
+
+  const visibleEpisodes = filteredEpisodes.slice(0, visibleCount);
+
+  // Intersection Observer for Infinite Scroll
+  const lastElementRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (observerRef.current) observerRef.current.disconnect();
+      observerRef.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && visibleCount < filteredEpisodes.length) {
+          setVisibleCount((prev) => prev + 10);
+        }
+      });
+      if (node) observerRef.current.observe(node);
+    },
+    [visibleCount, filteredEpisodes.length]
+  );
+
   return (
     <section className={cn("w-full", className)} aria-label={title || "Episodes"}>
-      {/* Header row with sort */}
+      {/* Filters and Sort */}
       {(title || showSort) && (
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
           {title && (
             <h3 className="text-subtitle-bold text-text-dark">{title}</h3>
           )}
-          {showSort && (
-            <div className="relative">
-              <button
-                onClick={() => setShowSortMenu(!showSortMenu)}
-                className={cn(
-                  "flex items-center gap-2 text-body text-text-muted",
-                  "transition-colors hover:text-text-dark",
-                  "px-3 py-1.5 rounded-[var(--radius-sm)] border border-divider"
-                )}
-                aria-label="Sort episodes"
-                aria-expanded={showSortMenu}
-              >
-                <SlidersHorizontal size={14} />
-                <span>{sortLabels[sortBy]}</span>
-                <ChevronDown
-                  size={14}
-                  className={cn(
-                    "transition-transform",
-                    showSortMenu && "rotate-180"
-                  )}
-                />
-              </button>
-
-              {/* Sort dropdown */}
-              {showSortMenu && (
-                <>
-                  {/* Backdrop */}
-                  <div
-                    className="fixed inset-0 z-40"
-                    onClick={() => setShowSortMenu(false)}
-                    aria-hidden="true"
-                  />
-                  <div
+          
+          <div className="flex items-center justify-between md:justify-end gap-3 flex-wrap">
+            {/* Filter Pills */}
+            {showSort && (
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide flex-1 md:flex-none">
+                {["all", "bonus", "trailer"].map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => {
+                      setFilterBy(filter);
+                      setVisibleCount(10); // reset pagination
+                    }}
                     className={cn(
-                      "absolute right-0 top-full mt-1 z-50",
-                      "w-[200px] rounded-[var(--radius-lg)] bg-white",
-                      "border border-border shadow-[var(--shadow-menu)]",
-                      "py-2"
+                      "px-4 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors border",
+                      filterBy === filter
+                        ? "bg-text-dark text-white border-text-dark"
+                        : "bg-surface-light text-text-muted border-transparent hover:bg-gray-100 hover:text-text-dark"
                     )}
-                    role="menu"
                   >
-                    {(Object.keys(sortLabels) as EpisodeSortOption[]).map(
-                      (option) => (
-                        <button
-                          key={option}
-                          onClick={() => {
-                            setSortBy(option);
-                            setShowSortMenu(false);
-                          }}
-                          className={cn(
-                            "w-full px-4 py-2.5 text-left text-body",
-                            "transition-colors hover:bg-gray-50",
-                            sortBy === option
-                              ? "text-text-dark font-bold"
-                              : "text-text-muted"
-                          )}
-                          role="menuitem"
-                        >
-                          {sortLabels[option]}
-                        </button>
-                      )
+                    {filter === "all" ? "All Episodes" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {showSort && (
+              <div className="relative">
+                <button
+                  onClick={() => setShowSortMenu(!showSortMenu)}
+                  className={cn(
+                    "flex items-center gap-2 text-[13px] font-medium text-text-muted",
+                    "transition-colors hover:text-text-dark whitespace-nowrap",
+                    "px-3 py-1.5 rounded-full border border-divider"
+                  )}
+                  aria-label="Sort episodes"
+                  aria-expanded={showSortMenu}
+                >
+                  <span>{sortLabels[sortBy]}</span>
+                  <ChevronDown
+                    size={14}
+                    className={cn(
+                      "transition-transform",
+                      showSortMenu && "rotate-180"
                     )}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
+                  />
+                </button>
+
+                {/* Sort dropdown */}
+                {showSortMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-[60]"
+                      onClick={() => setShowSortMenu(false)}
+                      aria-hidden="true"
+                    />
+                    <div
+                      className={cn(
+                        "absolute right-0 top-full mt-2 z-[70]",
+                        "w-[200px] rounded-xl bg-white",
+                        "border shadow-lg",
+                        "py-1"
+                      )}
+                      role="menu"
+                    >
+                      {(Object.keys(sortLabels) as EpisodeSortOption[]).map(
+                        (option) => (
+                          <button
+                            key={option}
+                            onClick={() => {
+                              setSortBy(option);
+                              setShowSortMenu(false);
+                              setVisibleCount(10); // reset pagination
+                            }}
+                            className={cn(
+                              "w-full px-4 py-2.5 text-left text-[14px]",
+                              "transition-colors hover:bg-gray-50 flex items-center justify-between",
+                              sortBy === option
+                                ? "text-primary font-bold"
+                                : "text-text-dark"
+                            )}
+                            role="menuitem"
+                          >
+                            {sortLabels[option]}
+                            {sortBy === option && <Check size={16} />}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {/* Divider */}
-      <Divider className="mb-2" />
+      <Divider className="mb-4" />
 
       {/* Episode rows */}
-      <div className="flex flex-col" role="list">
-        {sortedEpisodes.map((episode, i) => (
-          <div key={episode.id} role="listitem">
-            <EpisodeRow
-              episode={episode}
-              onPlay={onPlay}
-              onMore={onMore}
-            />
-            {i < sortedEpisodes.length - 1 && (
-              <Divider className="ml-[52px]" />
-            )}
+      <div className="flex flex-col gap-2" role="list">
+        {visibleEpisodes.map((episode, i) => {
+          const isLast = i === visibleEpisodes.length - 1;
+          return (
+            <div key={episode.id} role="listitem" ref={isLast ? lastElementRef : null}>
+              <EpisodeRow
+                episode={episode}
+                onPlay={onPlay}
+                onMore={onMore}
+              />
+              {i < filteredEpisodes.length - 1 && (
+                <Divider className="ml-[60px]" />
+              )}
+            </div>
+          );
+        })}
+        {filteredEpisodes.length === 0 && (
+          <div className="py-12 text-center text-text-muted">
+            <p>No episodes found.</p>
           </div>
-        ))}
+        )}
+        {visibleCount < filteredEpisodes.length && (
+          <div className="py-6 flex justify-center">
+            <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+          </div>
+        )}
       </div>
     </section>
   );
