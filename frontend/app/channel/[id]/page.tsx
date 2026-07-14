@@ -60,7 +60,16 @@ function ChannelPageContent({ id }: { id: string }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Header variant="interior" backTitle="Home" backHref="/" />
+      <Header 
+        variant="interior" 
+        backTitle="Back" 
+        backHref="/" 
+        breadcrumbs={[
+          { label: "Home", href: "/" },
+          { label: podcast.category || "Channels", href: "/search" },
+          { label: podcast.title, href: `/channel/${podcast.id}` }
+        ]}
+      />
 
       <main className="flex-1">
         {/* Podcast Head */}

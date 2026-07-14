@@ -80,19 +80,28 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
           </p>
 
           {/* Action buttons */}
-          <div className="flex items-center justify-center md:justify-start gap-6 mt-1">
+          <div className="flex items-center justify-center md:justify-start gap-4 mt-2 flex-wrap">
             <button
-              className="flex items-center gap-2 text-subtitle text-text-primary transition-opacity hover:opacity-70"
+              className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white font-bold rounded-full transition-transform hover:scale-105 active:scale-95"
+              aria-label="Play latest episode"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+              </svg>
+              <span>Play Latest</span>
+            </button>
+            <button
+              className="flex items-center gap-2 px-5 py-2.5 border border-primary text-primary font-bold rounded-full transition-colors hover:bg-primary/10"
               aria-label="Follow this podcast"
             >
-              <UserPlus size={20} strokeWidth={1.5} />
+              <UserPlus size={18} strokeWidth={2} />
               <span>Follow</span>
             </button>
             <button
-              className="flex items-center gap-2 text-subtitle text-text-primary transition-opacity hover:opacity-70"
+              className="flex items-center gap-2 px-5 py-2.5 border border-divider text-text-dark font-bold rounded-full transition-colors hover:bg-gray-100"
               aria-label="Share this podcast"
             >
-              <Share2 size={20} strokeWidth={1.5} />
+              <Share2 size={18} strokeWidth={2} />
               <span>Share</span>
             </button>
           </div>

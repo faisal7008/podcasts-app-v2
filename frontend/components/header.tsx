@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, User, ChevronLeft } from "lucide-react";
+import { Search, User, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /** Navigation links shown in the desktop header. */
@@ -11,19 +11,27 @@ const navLinks = [
   { href: "/search", label: "Explore" },
 ];
 
+export interface Breadcrumb {
+  label: string;
+  href: string;
+}
+
 interface HeaderProps {
-  /** If set, shows a back button and this title instead of the logo nav. */
+  /** If set, shows a back button and this title instead of the logo nav on mobile. */
   backTitle?: string;
   /** If set, the back href for the back button. Defaults to "/". */
   backHref?: string;
   /** Whether this is the home page header variant. */
   variant?: "home" | "interior";
+  /** Breadcrumbs to display on desktop */
+  breadcrumbs?: Breadcrumb[];
 }
 
 export function Header({
   backTitle,
   backHref = "/",
   variant = "home",
+  breadcrumbs,
 }: HeaderProps) {
   const pathname = usePathname();
   const isInterior = variant === "interior" || !!backTitle;
@@ -40,18 +48,52 @@ export function Header({
         {/* Left section */}
         <div className="flex items-center gap-4">
           {isInterior ? (
-            <Link
-              href={backHref}
-              className="flex items-center gap-2 text-text-dark transition-opacity hover:opacity-70"
-              aria-label={`Go back to ${backTitle || "previous page"}`}
-            >
-              <ChevronLeft size={20} strokeWidth={2} />
-              {backTitle && (
-                <span className="text-subtitle-bold hidden sm:inline">
-                  {backTitle}
-                </span>
+            <>
+              {/* Mobile Back Button */}
+              <Link
+                href={backHref}
+                className={cn(
+                  "flex items-center gap-2 text-text-dark transition-opacity hover:opacity-70",
+                  breadcrumbs && breadcrumbs.length > 0 ? "md:hidden" : ""
+                )}
+                aria-label={`Go back to ${backTitle || "previous page"}`}
+              >
+                <ChevronLeft size={24} strokeWidth={2} />
+                {backTitle && (
+                  <span className="text-subtitle-bold hidden sm:inline">
+                    {backTitle}
+                  </span>
+                )}
+              </Link>
+              
+              {/* Desktop Breadcrumbs */}
+              {breadcrumbs && breadcrumbs.length > 0 && (
+                <nav className="hidden md:flex items-center" aria-label="Breadcrumb">
+                  <ol className="flex items-center gap-2 text-[14px]">
+                    {breadcrumbs.map((crumb, index) => {
+                      const isLast = index === breadcrumbs.length - 1;
+                      return (
+                        <li key={crumb.href} className="flex items-center gap-2">
+                          <Link
+                            href={crumb.href}
+                            className={cn(
+                              "transition-colors hover:underline line-clamp-1 max-w-[200px]",
+                              isLast ? "text-text-dark font-bold" : "text-text-muted hover:text-text-dark"
+                            )}
+                            aria-current={isLast ? "page" : undefined}
+                          >
+                            {crumb.label}
+                          </Link>
+                          {!isLast && (
+                            <ChevronRight size={14} className="text-divider" />
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </nav>
               )}
-            </Link>
+            </>
           ) : (
             <Link
               href="/"
