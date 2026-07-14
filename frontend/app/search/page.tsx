@@ -4,10 +4,10 @@ import { useState, useMemo } from "react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { SearchInput } from "@/components/search-input";
+import { SearchHeading } from "@/components/search-heading";
 import { PodcastsCarousel } from "@/components/podcasts-carousel";
 import { PodcastsGrid } from "@/components/podcasts-grid";
 import { EpisodeList } from "@/components/episode-list";
-import { SectionHeading } from "@/components/section-heading";
 import { PlayerSidebar } from "@/components/player/player-sidebar";
 import { MiniPlayer } from "@/components/player/mini-player";
 import { FullPlayer } from "@/components/player/full-player";
@@ -26,7 +26,9 @@ function SearchPageContent() {
     return searchAll(query);
   }, [query]);
 
-  const hasResults = results && (results.podcasts.length > 0 || results.episodes.length > 0);
+  const hasResults =
+    results &&
+    (results.podcasts.length > 0 || results.episodes.length > 0);
 
   const handlePlay = (episode: Episode) => {
     player.play(episode);
@@ -38,18 +40,18 @@ function SearchPageContent() {
       <Header variant="interior" backTitle="Search" backHref="/" />
 
       <main className="flex-1">
-        {/* Search Input */}
+        {/* Search Input — always visible (898×70 desktop / 343×70 mobile) */}
         <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
           <SearchInput
             value={query}
             onChange={setQuery}
             activeTab={activeTab}
             onTabChange={setActiveTab}
-            showTabs={!!hasResults}
+            showTabs={false}
           />
         </section>
 
-        {/* No search yet — show browse */}
+        {/* Default state: empty search prompt */}
         {!query.trim() && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-12">
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -71,8 +73,8 @@ function SearchPageContent() {
                 Search for Podcasts
               </h2>
               <p className="text-body text-text-muted mt-2 max-w-[300px]">
-                Find your next favorite podcast by searching for shows, episodes,
-                or topics.
+                Find your next favorite podcast by searching for shows,
+                episodes, or topics.
               </p>
             </div>
           </section>
@@ -90,39 +92,43 @@ function SearchPageContent() {
           </section>
         )}
 
-        {/* Results */}
+        {/* Results with heading + tabs (293×70px heading as in Figma) */}
         {hasResults && results && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
-            {/* All tab */}
+            {/* Search Heading with tabs — matches Figma Heading (293×70) */}
+            <SearchHeading
+              query={query}
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              className="mb-8"
+            />
+
+            {/* All tab — shows carousel + episode list (32px gap) */}
             {activeTab === "all" && (
-              <div className="flex flex-col gap-10">
+              <div className="flex flex-col gap-8">
                 {results.podcasts.length > 0 && (
-                  <div>
-                    <SectionHeading className="mb-4">Channels</SectionHeading>
-                    <PodcastsCarousel podcasts={results.podcasts} />
-                  </div>
+                  <PodcastsCarousel
+                    podcasts={results.podcasts}
+                    title="Channels"
+                  />
                 )}
                 {results.episodes.length > 0 && (
-                  <div>
-                    <SectionHeading className="mb-4">Episodes</SectionHeading>
-                    <EpisodeList
-                      episodes={results.episodes}
-                      onPlay={handlePlay}
-                      showSort={false}
-                    />
-                  </div>
+                  <EpisodeList
+                    episodes={results.episodes}
+                    title="Episodes"
+                    onPlay={handlePlay}
+                    showSort={false}
+                  />
                 )}
               </div>
             )}
 
-            {/* Channels tab */}
+            {/* Channels tab — shows Podcasts Grid (898×727 desktop) */}
             {activeTab === "channels" && (
               <div>
-                <SectionHeading className="mb-6">
-                  Channels matching &ldquo;{query}&rdquo;
-                </SectionHeading>
-                <PodcastsGrid podcasts={results.podcasts} />
-                {results.podcasts.length === 0 && (
+                {results.podcasts.length > 0 ? (
+                  <PodcastsGrid podcasts={results.podcasts} />
+                ) : (
                   <p className="text-body text-text-muted text-center py-12">
                     No channels found
                   </p>
@@ -130,18 +136,16 @@ function SearchPageContent() {
               </div>
             )}
 
-            {/* Episodes tab */}
+            {/* Episodes tab — shows Episode List (898×1405 desktop) */}
             {activeTab === "episodes" && (
               <div>
-                <SectionHeading className="mb-4">
-                  Episodes matching &ldquo;{query}&rdquo;
-                </SectionHeading>
-                <EpisodeList
-                  episodes={results.episodes}
-                  onPlay={handlePlay}
-                  showSort={false}
-                />
-                {results.episodes.length === 0 && (
+                {results.episodes.length > 0 ? (
+                  <EpisodeList
+                    episodes={results.episodes}
+                    onPlay={handlePlay}
+                    showSort={true}
+                  />
+                ) : (
                   <p className="text-body text-text-muted text-center py-12">
                     No episodes found
                   </p>
