@@ -8,12 +8,8 @@ import { SearchHeading } from "@/components/search-heading";
 import { PodcastsCarousel } from "@/components/podcasts-carousel";
 import { PodcastsGrid } from "@/components/podcasts-grid";
 import { EpisodeList } from "@/components/episode-list";
-import { PlayerSidebar } from "@/components/player/player-sidebar";
-import { MiniPlayer } from "@/components/player/mini-player";
-import { FullPlayer } from "@/components/player/full-player";
-import { Queue } from "@/components/queue";
-import { PlayerProvider, usePlayer } from "@/components/player/player-provider";
-import { searchAll } from "@/lib/mock-data";
+import { usePlayer } from "@/components/player/player-provider";
+import { useSearch } from "@/hooks/use-podcasts";
 import type { SearchTab, Episode } from "@/types/podcast";
 
 function SearchPageContent() {
@@ -21,10 +17,7 @@ function SearchPageContent() {
   const [activeTab, setActiveTab] = useState<SearchTab>("all");
   const player = usePlayer();
 
-  const results = useMemo(() => {
-    if (!query.trim()) return null;
-    return searchAll(query);
-  }, [query]);
+  const { data: results, isLoading, isError } = useSearch(query);
 
   const hasResults =
     results &&
@@ -80,8 +73,30 @@ function SearchPageContent() {
           </section>
         )}
 
+        {/* Loading state */}
+        {query.trim().length > 2 && isLoading && (
+          <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-12">
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-accent mb-4"></div>
+              <h2 className="text-heading text-text-dark">Searching...</h2>
+            </div>
+          </section>
+        )}
+
+        {/* Error state */}
+        {isError && (
+          <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-12">
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <h2 className="text-heading text-text-dark text-red-500">Error</h2>
+              <p className="text-body text-text-muted mt-2">
+                Failed to fetch search results. Check your API limits.
+              </p>
+            </div>
+          </section>
+        )}
+
         {/* No results */}
-        {query.trim() && !hasResults && (
+        {query.trim().length > 2 && !isLoading && !isError && !hasResults && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-12">
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <h2 className="text-heading text-text-dark">No Results</h2>
@@ -159,20 +174,10 @@ function SearchPageContent() {
       </main>
 
       <Footer />
-
-      {/* Player */}
-      <PlayerSidebar />
-      <MiniPlayer />
-      <FullPlayer />
-      <Queue />
     </div>
   );
 }
 
 export default function SearchPage() {
-  return (
-    <PlayerProvider>
-      <SearchPageContent />
-    </PlayerProvider>
-  );
+  return <SearchPageContent />;
 }

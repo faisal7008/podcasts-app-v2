@@ -7,11 +7,6 @@ import { SectionHeading } from "@/components/section-heading";
 import { MainCarousel } from "@/components/main-carousel";
 import { PodcastsCarousel } from "@/components/podcasts-carousel";
 import { TopChannels } from "@/components/top-channels";
-import { PlayerSidebar } from "@/components/player/player-sidebar";
-import { MiniPlayer } from "@/components/player/mini-player";
-import { FullPlayer } from "@/components/player/full-player";
-import { Queue } from "@/components/queue";
-import { PlayerProvider } from "@/components/player/player-provider";
 import {
   podcasts,
   explorePodcasts,
@@ -29,8 +24,7 @@ export default function HomePage() {
   const secondHalf = topChannels.slice(4, 8);
 
   return (
-    <PlayerProvider>
-      <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-screen flex-col">
         <Header variant="home" />
 
         <main className="flex-1">
@@ -87,12 +81,6 @@ export default function HomePage() {
 
         <Footer />
 
-        {/* Player components */}
-        <PlayerSidebar />
-        <MiniPlayer />
-        <FullPlayer />
-        <Queue />
       </div>
-    </PlayerProvider>
   );
 }

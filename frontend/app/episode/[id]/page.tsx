@@ -8,31 +8,40 @@ import { EpisodeList } from "@/components/episode-list";
 import { PodcastsCarousel } from "@/components/podcasts-carousel";
 import { Divider } from "@/components/divider";
 import { SectionHeading } from "@/components/section-heading";
-import { PlayerSidebar } from "@/components/player/player-sidebar";
-import { MiniPlayer } from "@/components/player/mini-player";
-import { FullPlayer } from "@/components/player/full-player";
-import { Queue } from "@/components/queue";
-import { PlayerProvider, usePlayer } from "@/components/player/player-provider";
-import {
-  getEpisodeById,
-  getEpisodesByPodcast,
-  relatedPodcasts,
-} from "@/lib/mock-data";
+import { usePlayer } from "@/components/player/player-provider";
+import { useEpisode, usePodcast } from "@/hooks/use-podcasts";
+import { relatedPodcasts } from "@/lib/mock-data"; // Mock for "You may also like"
 import type { Episode } from "@/types/podcast";
 
 function EpisodePageContent({ id }: { id: string }) {
-  const episode = getEpisodeById(id);
+  const { data: episode, isLoading, isError } = useEpisode(id);
+  const { data: podcastData } = usePodcast(episode?.podcastId || "");
   const player = usePlayer();
 
-  if (!episode) {
+  if (isLoading) {
     return (
       <div className="flex min-h-screen flex-col">
         <Header variant="interior" backTitle="Back" backHref="/" />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <h1 className="text-title text-text-dark">Episode Not Found</h1>
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-accent mb-4 mx-auto"></div>
+            <h2 className="text-heading text-text-dark">Loading Episode...</h2>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (isError || !episode) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <Header variant="interior" backTitle="Back" backHref="/" />
+        <main className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <h1 className="text-title text-text-dark text-red-500">Episode Not Found</h1>
             <p className="text-body text-text-muted mt-2">
-              The episode you&apos;re looking for doesn&apos;t exist.
+              The episode you&apos;re looking for doesn&apos;t exist or an error occurred.
             </p>
           </div>
         </main>
@@ -41,8 +50,8 @@ function EpisodePageContent({ id }: { id: string }) {
     );
   }
 
-  const moreEpisodes = getEpisodesByPodcast(episode.podcastId).filter(
-    (e) => e.id !== episode.id
+  const moreEpisodes = (podcastData?.episodes || []).filter(
+    (e: Episode) => e.id !== episode.id
   );
 
   const handlePlay = (ep: Episode) => {
@@ -97,12 +106,6 @@ function EpisodePageContent({ id }: { id: string }) {
       </main>
 
       <Footer />
-
-      {/* Player */}
-      <PlayerSidebar />
-      <MiniPlayer />
-      <FullPlayer />
-      <Queue />
     </div>
   );
 }
@@ -113,9 +116,5 @@ export default function EpisodePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  return (
-    <PlayerProvider>
-      <EpisodePageContent id={id} />
-    </PlayerProvider>
-  );
+  return <EpisodePageContent id={id} />;
 }

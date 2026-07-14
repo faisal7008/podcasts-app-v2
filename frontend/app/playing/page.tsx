@@ -5,11 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/header";
 import { EpisodeHead } from "@/components/episode-head";
 import { EpisodeList } from "@/components/episode-list";
-import { PlayerSidebar } from "@/components/player/player-sidebar";
-import { MiniPlayer } from "@/components/player/mini-player";
-import { FullPlayer } from "@/components/player/full-player";
-import { Queue } from "@/components/queue";
-import { PlayerProvider, usePlayer } from "@/components/player/player-provider";
+import { usePlayer } from "@/components/player/player-provider";
 import { getEpisodeById, getEpisodesByPodcast } from "@/lib/mock-data";
 import type { Episode } from "@/types/podcast";
 
@@ -91,20 +87,10 @@ function PlayingPageContent() {
           <div className="h-8 md:h-16" />
         </main>
       </div>
-
-      {/* Player components */}
-      <PlayerSidebar />
-      <MiniPlayer />
-      <FullPlayer />
-      <Queue />
     </div>
   );
 }
 
 export default function PlayingPage() {
-  return (
-    <PlayerProvider>
-      <PlayingPageContent />
-    </PlayerProvider>
-  );
+  return <PlayingPageContent />;
 }

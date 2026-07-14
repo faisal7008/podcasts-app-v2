@@ -66,3 +66,10 @@ export type EpisodeSortOption = "newest" | "oldest" | "popular";
 
 /** Search tab filter options. */
 export type SearchTab = "all" | "channels" | "episodes";
+
+/** User Library to track subscriptions and history. */
+export interface UserLibrary {
+  subscribedPodcasts: Podcast[];
+  likedEpisodes: Episode[];
+  playHistory: { episodeId: string; progress: number; lastPlayed: number }[];
+}
