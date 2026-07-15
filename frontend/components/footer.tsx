@@ -3,7 +3,7 @@ import Link from "next/link";
 export function Footer() {
   return (
     <footer
-      className="w-full border-t border-divider bg-white"
+      className="w-full border-t border-divider bg-bg transition-colors duration-300"
       role="contentinfo"
     >
       <div className="mx-auto flex h-[100px] max-w-[1440px] items-center justify-between px-4 md:px-[180px] lg:px-[271px]">

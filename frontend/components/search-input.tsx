@@ -49,7 +49,7 @@ export function SearchInput({
           "rounded-[var(--radius-md)] border",
           "transition-all duration-200",
           isFocused
-            ? "border-surface-dark shadow-sm"
+            ? "border-text-dark shadow-sm"
             : "border-divider"
         )}
       >
@@ -77,7 +77,7 @@ export function SearchInput({
         {value && (
           <button
             onClick={() => onChange("")}
-            className="flex h-6 w-6 items-center justify-center rounded-full text-text-light hover:text-text-dark hover:bg-gray-100 transition-colors"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-text-light hover:text-text-dark hover:bg-gray-100 dark:hover:bg-surface-dark transition-colors"
             aria-label="Clear search"
           >
             <X size={16} />
@@ -96,8 +96,8 @@ export function SearchInput({
                 "px-4 py-2 rounded-[var(--radius-sm)]",
                 "text-[14px] font-bold transition-all",
                 activeTab === tab.id
-                  ? "bg-surface-dark text-white"
-                  : "text-text-muted hover:bg-gray-100 hover:text-text-dark"
+                  ? "bg-text-dark text-bg"
+                  : "text-text-muted hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
               )}
               role="tab"
               aria-selected={activeTab === tab.id}

@@ -55,7 +55,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
           "relative flex items-center gap-8 rounded-[var(--radius-md)]",
           "p-6 md:p-10",
           "flex-col md:flex-row",
-          "min-h-[400px] md:min-h-[272px]"
+          "min-h-[460px] md:min-h-[272px]"
         )}
         role="group"
         aria-roledescription="slide"

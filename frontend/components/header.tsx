@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Search, User, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, User, ChevronLeft, ChevronRight, Sun, Moon } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/components/theme-provider";
 
 /** Navigation links shown in the desktop header. */
 const navLinks = [
@@ -35,11 +36,12 @@ export function Header({
 }: HeaderProps) {
   const pathname = usePathname();
   const isInterior = variant === "interior" || !!backTitle;
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header
       className={cn(
-        "sticky top-0 z-50 w-full bg-white",
+        "sticky top-0 z-50 w-full bg-bg transition-colors duration-300",
         "border-b border-divider"
       )}
       role="banner"
@@ -132,15 +134,27 @@ export function Header({
 
         {/* Right section */}
         <div className="flex items-center gap-4">
+          <button
+            onClick={toggleTheme}
+            className="flex h-10 w-10 items-center justify-center rounded-full text-text-dark transition-colors hover:bg-gray-100 dark:hover:bg-surface-dark"
+            aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
+          >
+            {theme === "light" ? (
+              <Moon size={20} strokeWidth={2} />
+            ) : (
+              <Sun size={20} strokeWidth={2} />
+            )}
+          </button>
+
           <Link
             href="/search"
-            className="flex h-10 w-10 items-center justify-center rounded-full text-text-dark transition-colors hover:bg-gray-100"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-text-dark transition-colors hover:bg-gray-100 dark:hover:bg-surface-dark"
             aria-label="Search"
           >
             <Search size={20} strokeWidth={2} />
           </Link>
           <button
-            className="flex h-10 w-10 items-center justify-center rounded-full text-text-dark transition-colors hover:bg-gray-100"
+            className="flex h-10 w-10 items-center justify-center rounded-full text-text-dark transition-colors hover:bg-gray-100 dark:hover:bg-surface-dark"
             aria-label="User profile"
           >
             <User size={20} strokeWidth={2} />

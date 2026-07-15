@@ -64,11 +64,11 @@ export function EpisodeRow({
         className={cn(
           "flex-shrink-0 mt-0.5",
           "flex h-10 w-10 md:h-12 md:w-12 items-center justify-center",
-          "rounded-full border bg-white",
+          "rounded-full border bg-bg dark:bg-surface-dark",
           "transition-all active:scale-95",
           isActive 
             ? "border-primary text-primary" 
-            : "border-divider hover:bg-surface-dark hover:text-white hover:border-surface-dark"
+            : "border-divider hover:bg-surface-dark hover:text-white hover:border-surface-dark dark:hover:bg-white dark:hover:text-bg dark:hover:border-white"
         )}
         aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
       >
@@ -101,7 +101,7 @@ export function EpisodeRow({
         <p className="text-[12px] md:text-[13px] text-text-light mt-2.5 font-medium flex items-center gap-2">
           {formatDate(episode.date)} · {formatDuration(episode.duration)}
           {isActive && player.duration > 0 && (
-            <span className="block mt-2 h-1 w-full max-w-[200px] bg-gray-200 rounded-full overflow-hidden">
+            <span className="block mt-2 h-1 w-full max-w-[200px] bg-divider rounded-full overflow-hidden">
               <span 
                 className="block h-full bg-primary" 
                 style={{ width: `${(player.currentTime / player.duration) * 100}%` }}
@@ -119,7 +119,7 @@ export function EpisodeRow({
           "flex h-8 w-8 items-center justify-center",
           "rounded-full text-text-light",
           "md:opacity-0 group-hover:opacity-100 transition-opacity",
-          "hover:bg-gray-100 hover:text-text-dark"
+          "hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
         )}
         aria-label={`More options for ${title}`}
       >

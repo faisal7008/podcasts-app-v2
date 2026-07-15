@@ -37,8 +37,13 @@ export function EpisodeList({
   const [visibleCount, setVisibleCount] = useState(10);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
+  // Deduplicate episodes by ID to prevent key collision issues
+  const uniqueEpisodes = Array.from(
+    new Map(episodes.map((ep) => [ep.id, ep])).values()
+  );
+
   // Sorting
-  const sortedEpisodes = [...episodes].sort((a, b) => {
+  const sortedEpisodes = [...uniqueEpisodes].sort((a, b) => {
     switch (sortBy) {
       case "newest":
         return new Date(b.date).getTime() - new Date(a.date).getTime();
@@ -90,8 +95,8 @@ export function EpisodeList({
                     className={cn(
                       "px-4 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors border",
                       filterBy === filter
-                        ? "bg-text-dark text-white border-text-dark"
-                        : "bg-surface-light text-text-muted border-transparent hover:bg-gray-100 hover:text-text-dark"
+                        ? "bg-text-dark text-white border-text-dark dark:bg-white dark:text-bg dark:border-white"
+                        : "bg-divider text-text-muted border-transparent hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
                     )}
                   >
                     {filter === "all" ? "All Episodes" : filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -130,11 +135,11 @@ export function EpisodeList({
                       onClick={() => setShowSortMenu(false)}
                       aria-hidden="true"
                     />
-                    <div
+                     <div
                       className={cn(
                         "absolute right-0 top-full mt-2 z-[70]",
-                        "w-[200px] rounded-xl bg-white",
-                        "border shadow-lg",
+                        "w-[200px] rounded-xl bg-bg",
+                        "border border-divider shadow-lg dark:shadow-black/40",
                         "py-1"
                       )}
                       role="menu"
@@ -150,7 +155,7 @@ export function EpisodeList({
                             }}
                             className={cn(
                               "w-full px-4 py-2.5 text-left text-[14px]",
-                              "transition-colors hover:bg-gray-50 flex items-center justify-between",
+                              "transition-colors hover:bg-gray-50 dark:hover:bg-surface-dark flex items-center justify-between",
                               sortBy === option
                                 ? "text-primary font-bold"
                                 : "text-text-dark"
@@ -199,7 +204,7 @@ export function EpisodeList({
           <div className="py-8 flex justify-center">
             <button 
               onClick={handleLoadMore}
-              className="px-6 py-2.5 rounded-full border-2 border-gray-200 text-[14px] font-bold text-text-dark hover:border-text-dark hover:bg-gray-50 transition-colors"
+              className="px-6 py-2.5 rounded-full border-2 border-divider text-[14px] font-bold text-text-dark hover:border-text-dark hover:bg-gray-50 dark:hover:bg-surface-dark transition-colors"
             >
               More Episodes
             </button>

@@ -67,7 +67,7 @@ export default function HomePage() {
         )}
 
         {/* Divider */}
-        <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-10 md:py-12">
+        <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-8 md:py-12">
           <Divider />
         </div>
 
@@ -83,7 +83,7 @@ export default function HomePage() {
         )}
 
         {/* Divider */}
-        <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-10 md:py-12">
+        <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-8 md:py-12">
           <Divider />
         </div>
 
@@ -91,7 +91,7 @@ export default function HomePage() {
         {topChannels.length > 0 && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px]">
             <SectionHeading>Explore</SectionHeading>
-            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16">
+            <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-0 lg:gap-16">
               <TopChannels channels={firstHalf} />
               {secondHalf.length > 0 && (
                 <TopChannels channels={secondHalf} />
@@ -101,7 +101,7 @@ export default function HomePage() {
         )}
 
         {/* Divider */}
-        <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-10 md:py-12">
+        <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-8 md:py-12">
           <Divider />
         </div>
 

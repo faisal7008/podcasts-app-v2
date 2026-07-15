@@ -22,7 +22,7 @@ export function TopChannels({ channels, className }: TopChannelsProps) {
           href={`/channel/${channel.id}`}
           className={cn(
             "group flex items-center gap-4 py-3",
-            "transition-colors hover:bg-gray-50 rounded-lg px-2 -mx-2"
+            "transition-colors hover:bg-gray-50 dark:hover:bg-surface-dark rounded-lg px-2 -mx-2"
           )}
           role="listitem"
         >
@@ -54,7 +54,7 @@ export function TopChannels({ channels, className }: TopChannelsProps) {
           </div>
 
           {/* Category */}
-          <span className="hidden sm:inline text-[11px] text-text-light px-2 py-0.5 rounded-[var(--radius-sm)] bg-gray-100 flex-shrink-0">
+          <span className="hidden sm:inline text-[11px] text-text-light px-2 py-0.5 rounded-[var(--radius-sm)] bg-divider flex-shrink-0">
             {channel.category}
           </span>
         </Link>

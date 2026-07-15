@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* ─── Design Tokens from Figma ─────────────────────────────────────────── */
 
 :root {
@@ -13,6 +15,7 @@
   --color-border: #d0d0d0;
   --color-divider: #e5e5e5;
   --color-white: #ffffff;
+
 
   /* Shadows */
   --shadow-menu: 0px 5px 15px 0px rgba(0, 0, 0, 0.15);
@@ -29,6 +32,17 @@
   /* Spacing */
   --content-padding-mobile: 16px;
   --content-padding-desktop: 271px;
+}
+
+html.dark {
+  --color-bg: #0b0c0c;
+  --color-surface-dark: #1a1b1b;
+  --color-text-primary: #f3f4f6;
+  --color-text-dark: #ffffff;
+  --color-text-muted: #9ca3af;
+  --color-text-light: #cbd5e1;
+  --color-border: #222324;
+  --color-divider: #1f2020;
 }
 
 /* ─── Tailwind v4 Theme Extension ──────────────────────────────────────── */
@@ -62,6 +76,7 @@ body {
   background-color: var(--color-bg);
   color: var(--color-text-primary);
   font-family: var(--font-fira-sans), Arial, Helvetica, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* ─── Typography Utilities ─────────────────────────────────────────────── */
@@ -115,10 +130,14 @@ body {
 
 /* ─── Focus & Accessibility ────────────────────────────────────────────── */
 
-:focus-visible {
+:focus-visible:not(input, select, textarea) {
   outline: 2px solid var(--color-surface-dark);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+html.dark :focus-visible:not(input, select, textarea) {
+  outline-color: var(--color-text-dark);
 }
 
 /* Reduced motion */

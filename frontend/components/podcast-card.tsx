@@ -45,7 +45,7 @@ export function PodcastCard({
       <div
         className={cn(
           "relative aspect-square overflow-hidden rounded-[var(--radius-md)]",
-          "bg-gray-100 transition-transform duration-200",
+          "bg-divider transition-transform duration-200",
           "group-hover:scale-[1.02]"
         )}
       >

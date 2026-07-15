@@ -136,9 +136,9 @@ export function QueuePanel() {
                 onReorder={player.reorderQueue}
                 className="flex flex-col gap-1"
               >
-                {player.queue.map((item, index) => (
+                {player.queue.map((item) => (
                   <Reorder.Item
-                    key={item.episode.id}
+                    key={`${item.episode.id}-${item.addedAt}`}
                     value={item}
                     className="flex items-center gap-3 px-4 py-2.5 mx-2 rounded-[8px] hover:bg-white/5 transition-colors group cursor-grab active:cursor-grabbing bg-surface-dark md:bg-transparent"
                   >
