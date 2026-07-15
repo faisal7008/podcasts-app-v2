@@ -207,3 +207,85 @@ export function useHomeData() {
 
   return state;
 }
+
+// ─── useCategoryPodcasts ────────────────────────────────────────────────────
+
+export function useCategoryPodcasts(category: string) {
+  const [state, setState] = useState<AsyncState<Podcast[]>>({
+    data: null,
+    isLoading: true,
+    isError: false,
+    error: null,
+  });
+
+  useEffect(() => {
+    if (!category) {
+      setState({ data: null, isLoading: false, isError: false, error: null });
+      return;
+    }
+
+    let cancelled = false;
+    setState((prev) => ({ ...prev, isLoading: true }));
+
+    fetchJson<Podcast[]>(`/api/podcasts/explore?category=${encodeURIComponent(category)}`)
+      .then((data) => {
+        if (!cancelled) {
+          setState({ data, isLoading: false, isError: false, error: null });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({
+            data: null,
+            isLoading: false,
+            isError: true,
+            error: err instanceof Error ? err.message : "Failed to load category podcasts",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [category]);
+
+  return state;
+}
+
+// ─── useTopCategories ───────────────────────────────────────────────────────
+
+export function useTopCategories() {
+  const [state, setState] = useState<AsyncState<string[]>>({
+    data: null,
+    isLoading: true,
+    isError: false,
+    error: null,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchJson<string[]>("/api/podcasts/categories")
+      .then((data) => {
+        if (!cancelled) {
+          setState({ data, isLoading: false, isError: false, error: null });
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setState({
+            data: null,
+            isLoading: false,
+            isError: true,
+            error: err instanceof Error ? err.message : "Failed to load categories",
+          });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return state;
+}

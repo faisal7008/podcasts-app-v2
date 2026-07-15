@@ -48,7 +48,7 @@ export function SearchHeading({
               "text-[14px] font-bold transition-all",
               activeTab === tab.id
                 ? "bg-surface-dark text-white"
-                : "text-text-muted hover:bg-gray-100 hover:text-text-dark"
+                : "text-text-muted hover:bg-gray-2100 hover:text-text-dark dark:hover:bg-surface-dark dark:hover:text-text-primary"
             )}
             role="tab"
             aria-selected={activeTab === tab.id}

@@ -70,7 +70,8 @@ export function SearchInput({
           className={cn(
             "flex-1 bg-transparent outline-none",
             "text-subtitle text-text-dark",
-            "placeholder:text-text-light"
+            "placeholder:text-text-light",
+            "[&::-webkit-search-cancel-button]:appearance-none"
           )}
           aria-label="Search podcasts and episodes"
         />

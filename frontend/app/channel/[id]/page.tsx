@@ -66,7 +66,7 @@ function ChannelPageContent({ id }: { id: string }) {
         backHref="/" 
         breadcrumbs={[
           { label: "Home", href: "/" },
-          { label: podcast.category || "Channels", href: "/search" },
+          { label: podcast.category || "Channels", href: podcast.category ? `/explore/${encodeURIComponent(podcast.category.toLowerCase())}` : "/explore" },
           { label: podcast.title, href: `/channel/${podcast.id}` }
         ]}
       />

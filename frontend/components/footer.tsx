@@ -25,7 +25,7 @@ export function Footer() {
             Home
           </Link>
           <Link
-            href="/search"
+            href="/explore"
             className="text-body text-text-muted transition-colors hover:text-text-dark"
           >
             Explore

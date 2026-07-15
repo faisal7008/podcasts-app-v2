@@ -73,10 +73,10 @@ export function PodcastsCarousel({
           className={cn(
             "absolute left-0 top-1/2 z-10 -translate-y-1/2 -translate-x-3",
             "hidden md:flex h-10 w-10 items-center justify-center",
-            "rounded-full bg-white shadow-md border border-divider",
+            "rounded-full bg-bg dark:bg-surface-dark shadow-md border border-divider text-text-dark",
             "transition-all duration-200",
             canScrollLeft
-              ? "opacity-0 group-hover/carousel:opacity-100 hover:bg-gray-50"
+              ? "opacity-0 group-hover/carousel:opacity-100 hover:bg-gray-50 dark:hover:bg-surface-dark"
               : "pointer-events-none opacity-0"
           )}
           aria-label="Scroll left"
@@ -102,10 +102,10 @@ export function PodcastsCarousel({
           className={cn(
             "absolute right-0 top-1/2 z-10 -translate-y-1/2 translate-x-3",
             "hidden md:flex h-10 w-10 items-center justify-center",
-            "rounded-full bg-white shadow-md border border-divider",
+            "rounded-full bg-bg dark:bg-surface-dark shadow-md border border-divider text-text-dark",
             "transition-all duration-200",
             canScrollRight
-              ? "opacity-0 group-hover/carousel:opacity-100 hover:bg-gray-50"
+              ? "opacity-0 group-hover/carousel:opacity-100 hover:bg-gray-50 dark:hover:bg-surface-dark"
               : "pointer-events-none opacity-0"
           )}
           aria-label="Scroll right"

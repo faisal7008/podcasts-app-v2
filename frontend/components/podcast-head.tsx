@@ -123,7 +123,7 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
             </button>
             <button
               onClick={handleShare}
-              className="flex items-center gap-2 px-5 py-2.5 border border-divider text-text-dark font-bold rounded-full transition-colors hover:bg-gray-100"
+              className="flex items-center gap-2 px-5 py-2.5 border border-divider text-text-dark font-bold rounded-full transition-colors hover:bg-gray-100 dark:hover:bg-surface-dark"
               aria-label="Share this podcast"
             >
               <Share2 size={18} strokeWidth={2} />

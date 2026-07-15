@@ -81,7 +81,7 @@ export function BottomPlayer() {
           player.seek(pos * player.duration);
         }}>
           <div
-            className="h-full bg-primary"
+            className="h-full bg-white"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -160,7 +160,7 @@ export function BottomPlayer() {
               className="w-full h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
               aria-label="Seek position"
               style={{
-                background: `linear-gradient(to right, var(--color-primary) ${progress}%, rgba(255,255,255,0.2) ${progress}%)`,
+                background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.2) ${progress}%)`,
               }}
             />
             <span className="text-[12px] font-mono text-white/50 w-10 flex-shrink-0">

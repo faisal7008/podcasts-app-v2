@@ -18,15 +18,6 @@ interface EpisodeRowProps {
   className?: string;
 }
 
-function MiniEqualizer() {
-  return (
-    <div className="flex items-end justify-center gap-[2px] h-4 w-4">
-      <motion.div animate={{ height: ["4px", "14px", "4px"] }} transition={{ duration: 0.6, repeat: Infinity, ease: "linear" }} className="w-[3px] bg-primary rounded-t-sm" />
-      <motion.div animate={{ height: ["12px", "4px", "12px"] }} transition={{ duration: 0.5, repeat: Infinity, ease: "linear" }} className="w-[3px] bg-primary rounded-t-sm" />
-      <motion.div animate={{ height: ["8px", "16px", "8px"] }} transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }} className="w-[3px] bg-primary rounded-t-sm" />
-    </div>
-  );
-}
 
 export function EpisodeRow({
   episode,
@@ -48,38 +39,56 @@ export function EpisodeRow({
 
   const title = formatEpisodeTitle(episode.title);
   const epNumber = formatEpisodeNumber(undefined, episode.number);
+  const progressPercent = player.duration > 0 ? player.currentTime / player.duration : 0;
+  const radius = 23;
+  const circumference = 2 * Math.PI * radius;
 
   return (
     <article
       className={cn(
         "group flex items-start gap-3 md:gap-4 py-4 md:py-5 min-h-[72px]",
         "transition-colors hover:bg-black/5 dark:hover:bg-white/5 rounded-xl px-4 -mx-3",
-        isActive && "bg-primary/5 border-l-[3px] border-primary",
+        isActive && "bg-black/5 dark:bg-white/5 border-l-[3px] border-text-dark dark:border-white",
         className
       )}
     >
-      {/* Play button / Equalizer */}
-      <button
-        onClick={handlePlay}
-        className={cn(
-          "flex-shrink-0 mt-0.5",
-          "flex h-10 w-10 md:h-12 md:w-12 items-center justify-center",
-          "rounded-full border bg-bg dark:bg-surface-dark",
-          "transition-all active:scale-95",
-          isActive 
-            ? "border-primary text-primary" 
-            : "border-divider hover:bg-surface-dark hover:text-white hover:border-surface-dark dark:hover:bg-white dark:hover:text-bg dark:hover:border-white"
+      {/* Play button / Circular Progress */}
+      <div className="relative flex-shrink-0 mt-0.5 flex h-10 w-10 md:h-12 md:w-12 items-center justify-center">
+        {isActive && (
+          <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="23" fill="transparent" className="stroke-divider" strokeWidth="2" />
+            <circle
+              cx="24"
+              cy="24"
+              r="23"
+              fill="transparent"
+              className="stroke-text-dark dark:stroke-white transition-all duration-300 ease-linear"
+              strokeWidth="2"
+              strokeDasharray={circumference}
+              strokeDashoffset={circumference * (1 - progressPercent)}
+              strokeLinecap="round"
+            />
+          </svg>
         )}
-        aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
-      >
-        {isPlaying ? (
-          <MiniEqualizer />
-        ) : isActive ? (
-          <Pause size={18} fill="currentColor" />
-        ) : (
-          <Play size={18} fill="currentColor" className="ml-1" />
-        )}
-      </button>
+        <button
+          onClick={handlePlay}
+          className={cn(
+            "flex items-center justify-center rounded-full transition-all active:scale-95 z-10",
+            isActive 
+              ? "h-8 w-8 md:h-10 md:w-10 bg-text-dark text-white dark:bg-white dark:text-bg" 
+              : "h-10 w-10 md:h-12 md:w-12 border border-divider bg-bg dark:bg-surface-dark hover:bg-surface-dark hover:text-white hover:border-surface-dark dark:hover:bg-white dark:hover:text-bg dark:hover:border-white text-text-dark"
+          )}
+          aria-label={isPlaying ? `Pause ${title}` : `Play ${title}`}
+        >
+          {isPlaying ? (
+            <Pause size={isActive ? 16 : 18} fill="currentColor" />
+          ) : isActive ? (
+            <Play size={isActive ? 16 : 18} fill="currentColor" className="ml-1" />
+          ) : (
+            <Play size={18} fill="currentColor" className="ml-1" />
+          )}
+        </button>
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-w-0">
@@ -100,14 +109,6 @@ export function EpisodeRow({
         {/* Metadata */}
         <p className="text-[12px] md:text-[13px] text-text-light mt-2.5 font-medium flex items-center gap-2">
           {formatDate(episode.date)} · {formatDuration(episode.duration)}
-          {isActive && player.duration > 0 && (
-            <span className="block mt-2 h-1 w-full max-w-[200px] bg-divider rounded-full overflow-hidden">
-              <span 
-                className="block h-full bg-primary" 
-                style={{ width: `${(player.currentTime / player.duration) * 100}%` }}
-              />
-            </span>
-          )}
         </p>
       </div>
 

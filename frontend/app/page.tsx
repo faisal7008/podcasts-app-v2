@@ -77,7 +77,7 @@ export default function HomePage() {
             <PodcastsCarousel
               podcasts={noteworthy}
               title="New & Noteworthy"
-              seeAllHref="/search"
+              seeAllHref="/explore"
             />
           </section>
         )}

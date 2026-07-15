@@ -25,7 +25,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // Determine the initial theme
     const storedTheme = localStorage.getItem("theme") as Theme | null;
     const systemPrefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const initialTheme = storedTheme || (systemPrefersDark ? "dark" : "light");
+    const initialTheme = storedTheme || "dark";
 
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setTheme(initialTheme);

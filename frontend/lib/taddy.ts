@@ -111,7 +111,7 @@ function transformChannel(
 export async function searchPodcasts(term: string) {
   const query = `
     query Search($term: String!) {
-      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: ALL_TERMS) {
+      search(term: $term, filterForTypes: [PODCASTSERIES, PODCASTEPISODE], matchBy: ALL_TERMS) {
         searchId
         podcastSeries {
           uuid
@@ -315,4 +315,86 @@ export async function getTopChannels(
   return (response.data.search.podcastSeries || [])
     .slice(0, limit)
     .map((raw, i) => transformChannel(raw, i + 1));
+}
+
+/**
+ * Get podcasts by category.
+ */
+export async function getCategoryPodcasts(
+  category: string,
+  limit: number = 20
+) {
+  const query = `
+    query Search($term: String!) {
+      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS) {
+        searchId
+        podcastSeries {
+          uuid
+          name
+          authorName
+          description
+          imageUrl
+          totalEpisodesCount
+          genres
+        }
+      }
+    }
+  `;
+
+  const response = await fetchTaddyAPI<{
+    search: { podcastSeries: Record<string, unknown>[] };
+  }>(query, { term: category });
+
+  if (response.errors || !response.data) {
+    console.error("Taddy category search error:", response.errors);
+    return [];
+  }
+
+  return (response.data.search.podcastSeries || [])
+    .slice(0, limit)
+    .map(transformPodcast);
+}
+
+/**
+ * Get dynamic categories by extracting genres from trending podcasts.
+ */
+export async function getTopCategories(limit: number = 20): Promise<string[]> {
+  const query = `
+    query Search($term: String!) {
+      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS) {
+        searchId
+        podcastSeries {
+          uuid
+          name
+          genres
+        }
+      }
+    }
+  `;
+
+  const response = await fetchTaddyAPI<{
+    search: { podcastSeries: Record<string, unknown>[] };
+  }>(query, { term: "popular podcast" });
+
+  if (response.errors || !response.data) {
+    console.error("Taddy get categories error:", response.errors);
+    return [];
+  }
+
+  const genresSet = new Set<string>();
+  const series = response.data.search.podcastSeries || [];
+  
+  for (const s of series) {
+    const rawGenres = s.genres as string[];
+    if (Array.isArray(rawGenres)) {
+      for (const g of rawGenres) {
+        const clean = formatCategory(g);
+        if (clean && clean !== "Podcasts" && clean !== "General") {
+          genresSet.add(clean);
+        }
+      }
+    }
+  }
+
+  return Array.from(genresSet).slice(0, limit);
 }

@@ -17,8 +17,8 @@ export const metadata: Metadata = {
     "Discover, browse, and listen to your favorite podcasts. Explore trending channels, curated collections, and new episodes.",
   icons: {
     icon: [
-      { url: '/favicon-light.svg', media: '(prefers-color-scheme: light)' },
-      { url: '/favicon-dark.svg', media: '(prefers-color-scheme: dark)' },
+      { url: '/favicon-light.svg', media: '(prefers-color-scheme: dark)' },
+      { url: '/favicon-dark.svg', media: '(prefers-color-scheme: light)' },
     ],
     apple: [
       { url: '/mobile-icon.svg' }
@@ -47,7 +47,7 @@ export default function RootLayout({
                 try {
                   var theme = localStorage.getItem('theme');
                   var systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches;
-                  if (theme === 'dark' || (!theme && systemTheme)) {
+                  if (theme === 'dark' || !theme) {
                     document.documentElement.classList.add('dark');
                   } else {
                     document.documentElement.classList.remove('dark');
