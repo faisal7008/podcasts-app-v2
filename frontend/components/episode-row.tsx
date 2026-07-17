@@ -1,7 +1,9 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { Play, Pause, MoreHorizontal } from "lucide-react";
+import { Play, Pause, MoreHorizontal, Heart } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDuration } from "@/lib/utils";
 import { parseHtml, formatEpisodeTitle, formatEpisodeNumber } from "@/lib/sanitize";
@@ -18,6 +20,8 @@ interface EpisodeRowProps {
   className?: string;
 }
 
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 
 export function EpisodeRow({
   episode,
@@ -29,6 +33,51 @@ export function EpisodeRow({
   const isPlaying = player.currentEpisode?.id === episode.id && player.isPlaying;
   const isActive = player.currentEpisode?.id === episode.id;
 
+  const { data: likeData, mutate: mutateLike, isLoading: isLikeLoading } = useSWR(
+    `/api/likes?episodeId=${episode.id}`,
+    fetcher
+  );
+
+  const isLiked = likeData?.isLiked ?? false;
+
+  const handleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (isLikeLoading) return;
+    // Optimistic UI update
+    const previousState = isLiked;
+    mutateLike({ isLiked: !isLiked }, false);
+
+    try {
+      if (previousState) {
+        const res = await fetch("/api/likes", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ episodeId: episode.id }),
+        });
+        if (!res.ok) throw new Error("Failed to unlike");
+      } else {
+        const res = await fetch("/api/likes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ episodeId: episode.id }),
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            toast.error("Sign in to like episodes");
+            mutateLike({ isLiked: previousState }, false);
+            return;
+          }
+          throw new Error("Failed to like");
+        }
+      }
+      mutateLike(); // Revalidate
+    } catch (err) {
+      mutateLike({ isLiked: previousState }, false);
+      toast.error("Something went wrong. Please try again.");
+    }
+  };
+
   const handlePlay = () => {
     if (isActive) {
       player.togglePlay();
@@ -39,7 +88,11 @@ export function EpisodeRow({
 
   const title = formatEpisodeTitle(episode.title);
   const epNumber = formatEpisodeNumber(undefined, episode.number);
-  const progressPercent = player.duration > 0 ? player.currentTime / player.duration : 0;
+  const progressPercent = isActive 
+    ? (player.duration > 0 ? player.currentTime / player.duration : 0)
+    : (episode.progressSeconds && episode.duration > 0 ? episode.progressSeconds / episode.duration : 0);
+  
+  const showProgress = isActive || progressPercent > 0;
   const radius = 23;
   const circumference = 2 * Math.PI * radius;
 
@@ -54,9 +107,9 @@ export function EpisodeRow({
     >
       {/* Play button / Circular Progress */}
       <div className="relative flex-shrink-0 mt-0.5 flex h-10 w-10 md:h-12 md:w-12 items-center justify-center">
-        {isActive && (
-          <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none" viewBox="0 0 48 48">
-            <circle cx="24" cy="24" r="23" fill="transparent" className="stroke-divider" strokeWidth="2" />
+        {showProgress && (
+          <svg className="absolute inset-0 w-full h-full -rotate-90 pointer-events-none z-20" viewBox="0 0 48 48">
+            <circle cx="24" cy="24" r="23" fill="transparent" className={isActive ? "stroke-divider" : "stroke-transparent"} strokeWidth="2" />
             <circle
               cx="24"
               cy="24"
@@ -107,25 +160,45 @@ export function EpisodeRow({
           {parseHtml(episode.description)}
         </div>
         {/* Metadata */}
-        <p className="text-[12px] md:text-[13px] text-text-light mt-2.5 font-medium flex items-center gap-2">
-          {formatDate(episode.date)} · {formatDuration(episode.duration)}
+        <p className="text-[12px] md:text-[13px] text-text-light mt-2.5 font-medium flex items-center gap-2 flex-wrap">
+          {episode.podcastTitle && (
+            <>
+              <span className="text-text-dark/80 dark:text-white/80">{episode.podcastTitle}</span>
+              <span>·</span>
+            </>
+          )}
+          <span>{formatDate(episode.date)}</span>
+          <span>·</span>
+          <span>{formatDuration(episode.duration)}</span>
         </p>
       </div>
 
-      {/* More button */}
-      <button
-        onClick={() => onMore?.(episode)}
-        className={cn(
-          "flex-shrink-0 mt-1",
-          "flex h-8 w-8 items-center justify-center",
-          "rounded-full text-text-light",
-          "md:opacity-0 group-hover:opacity-100 transition-opacity",
-          "hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
-        )}
-        aria-label={`More options for ${title}`}
-      >
-        <MoreHorizontal size={18} />
-      </button>
+      <div className="flex items-center mt-1 flex-shrink-0 md:opacity-0 group-hover:opacity-100 transition-opacity">
+        <button
+          onClick={handleLike}
+          disabled={isLikeLoading}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-full transition-colors",
+            isLiked 
+              ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30" 
+              : "text-text-light hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
+          )}
+          aria-label={isLiked ? "Unlike episode" : "Like episode"}
+        >
+          <Heart size={18} fill={isLiked ? "currentColor" : "none"} />
+        </button>
+        <button
+          onClick={() => onMore?.(episode)}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center",
+            "rounded-full text-text-light",
+            "hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
+          )}
+          aria-label={`More options for ${title}`}
+        >
+          <MoreHorizontal size={18} />
+        </button>
+      </div>
     </article>
   );
 }

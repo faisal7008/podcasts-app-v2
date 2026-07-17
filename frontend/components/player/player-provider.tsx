@@ -30,6 +30,8 @@ interface PlayerContextValue extends PlayerState {
   toggleQueue: () => void;
   toggleMiniPlayer: () => void;
   showToast: (msg: string) => void;
+  setPlaybackRate: (rate: number) => void;
+  setSleepTimer: (minutes: number | null) => void;
 }
 
 const PlayerContext = createContext<PlayerContextValue | null>(null);
@@ -69,6 +71,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     isQueueOpen: false,
     isMiniPlayerVisible: false,
     toastMessage: null,
+    playbackRate: 1,
+    sleepTimer: null,
   });
 
   const playNextInternal = useCallback(() => {
@@ -139,11 +143,61 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playNextInternal]);
 
+  // Sync playback progress with backend periodically
+  useEffect(() => {
+    let syncInterval: NodeJS.Timeout;
+
+    if (state.isPlaying && state.currentEpisode) {
+      syncInterval = setInterval(() => {
+        fetch("/api/progress", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            episodeId: state.currentEpisode!.id,
+            podcastId: state.currentEpisode!.podcastId,
+            progressSeconds: Math.floor(audioRef.current?.currentTime || 0),
+            completed: false,
+          }),
+        }).catch((err) => console.error("Failed to sync progress", err));
+      }, 5000); // Sync every 5 seconds
+    }
+
+    return () => {
+      if (syncInterval) clearInterval(syncInterval);
+    };
+  }, [state.isPlaying, state.currentEpisode]);
+
+  // Handle playback rate changes
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = state.playbackRate;
+    }
+  }, [state.playbackRate, state.currentEpisode]);
+
+  // Handle sleep timer
+  useEffect(() => {
+    if (!state.sleepTimer || !state.isPlaying) return;
+
+    const checkTimer = () => {
+      if (Date.now() >= state.sleepTimer!) {
+        audioRef.current?.pause();
+        setState((prev) => ({ ...prev, isPlaying: false, sleepTimer: null }));
+        // Note: showToast might be delayed slightly, but that's fine
+      }
+    };
+
+    const interval = setInterval(checkTimer, 1000);
+    return () => clearInterval(interval);
+  }, [state.sleepTimer, state.isPlaying]);
+
   const play = useCallback((episode: Episode) => {
+    const startTime = episode.progressSeconds || 0;
     const audio = audioRef.current;
+    
     if (audio) {
       if (episode.audioSrc) {
         audio.src = episode.audioSrc;
+        audio.currentTime = startTime;
         audio.play().catch(() => {});
       }
     }
@@ -151,7 +205,7 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
       ...prev,
       currentEpisode: episode,
       isPlaying: true,
-      currentTime: 0,
+      currentTime: startTime,
       duration: episode.duration,
       isMiniPlayerVisible: true,
     }));
@@ -265,6 +319,24 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     }));
   }, []);
 
+  const setPlaybackRate = useCallback((rate: number) => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = rate;
+    }
+    setState((prev) => ({ ...prev, playbackRate: rate }));
+  }, []);
+
+  const setSleepTimer = useCallback((minutes: number | null) => {
+    if (minutes === null) {
+      setState((prev) => ({ ...prev, sleepTimer: null }));
+      showToast("Sleep timer disabled");
+    } else {
+      const endTime = Date.now() + minutes * 60 * 1000;
+      setState((prev) => ({ ...prev, sleepTimer: endTime }));
+      showToast(`Sleep timer set for ${minutes} minutes`);
+    }
+  }, [showToast]);
+
   const value: PlayerContextValue = {
     ...state,
     play,
@@ -285,6 +357,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     toggleQueue,
     toggleMiniPlayer,
     showToast,
+    setPlaybackRate,
+    setSleepTimer,
   };
 
   return (

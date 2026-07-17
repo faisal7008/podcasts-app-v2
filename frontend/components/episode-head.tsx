@@ -1,18 +1,22 @@
 "use client";
 
-import Image from "next/image";
-import { Share2, Download, ListPlus } from "lucide-react";
+import { Share2, Download, ListPlus, Heart } from "lucide-react";
+import { toast } from "sonner";
+import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDuration } from "@/lib/utils";
 import { parseHtml } from "@/lib/sanitize";
 import type { Episode } from "@/types/podcast";
-import { useState } from "react";
+import Image from "next/image";
 
 interface EpisodeHeadProps {
   episode: Episode;
   onPlay?: () => void;
   className?: string;
 }
+
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 
 /**
  * Episode header matching Figma's "Episode Head" component.
@@ -21,6 +25,49 @@ interface EpisodeHeadProps {
  */
 export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { data: likeData, mutate: mutateLike, isLoading: isLikeLoading } = useSWR(
+    `/api/likes?episodeId=${episode.id}`,
+    fetcher
+  );
+
+  const isLiked = likeData?.isLiked ?? false;
+
+  const handleLike = async () => {
+    if (isLikeLoading) return;
+    // Optimistic UI update
+    const previousState = isLiked;
+    mutateLike({ isLiked: !isLiked }, false);
+
+    try {
+      if (previousState) {
+        const res = await fetch("/api/likes", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ episodeId: episode.id }),
+        });
+        if (!res.ok) throw new Error("Failed to unlike");
+      } else {
+        const res = await fetch("/api/likes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ episodeId: episode.id }),
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            toast.error("Sign in to like episodes");
+            mutateLike({ isLiked: previousState }, false);
+            return;
+          }
+          throw new Error("Failed to like");
+        }
+      }
+      mutateLike(); // Revalidate
+    } catch (err) {
+      mutateLike({ isLiked: previousState }, false);
+      toast.error("Something went wrong. Please try again.");
+    }
+  };
+
   return (
     <section className={cn("w-full", className)} aria-label={episode.title}>
       <div className="flex flex-col md:flex-row gap-6 md:gap-8">
@@ -101,6 +148,18 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
               aria-label={`Play ${episode.title}`}
             >
               ▶ Play
+            </button>
+            <button
+              onClick={handleLike}
+              disabled={isLikeLoading}
+              className={cn(
+                "flex items-center gap-2 text-subtitle transition-opacity hover:opacity-70",
+                isLiked ? "text-red-500" : "text-text-primary"
+              )}
+              aria-label={isLiked ? "Unlike episode" : "Like episode"}
+            >
+              <Heart size={20} strokeWidth={1.5} fill={isLiked ? "currentColor" : "none"} />
+              <span className="hidden sm:inline">{isLiked ? "Liked" : "Like"}</span>
             </button>
             <button
               className="flex items-center gap-2 text-subtitle text-text-primary transition-opacity hover:opacity-70"

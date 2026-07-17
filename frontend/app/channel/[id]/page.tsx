@@ -9,10 +9,13 @@ import { Divider } from "@/components/divider";
 import { usePlayer } from "@/components/player/player-provider";
 import { usePodcast } from "@/hooks/use-podcasts";
 import type { Episode } from "@/types/podcast";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 
 function ChannelPageContent({ id }: { id: string }) {
   const { data, isLoading, isError } = usePodcast(id);
   const player = usePlayer();
+  const { data: progressData } = useSWR("/api/progress", fetcher);
 
   if (isLoading) {
     return (
@@ -49,6 +52,11 @@ function ChannelPageContent({ id }: { id: string }) {
 
   const { podcast, episodes } = data;
 
+  const episodesWithProgress = episodes.map(ep => {
+    const historyItem = progressData?.history?.find((h: any) => h.episodeId === ep.id);
+    return historyItem ? { ...ep, progressSeconds: historyItem.progressSeconds } : ep;
+  });
+
   const handlePlay = (episode: Episode) => {
     player.play(episode);
     player.openPlayer();
@@ -80,7 +88,7 @@ function ChannelPageContent({ id }: { id: string }) {
         {/* Episode List */}
         <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
           <EpisodeList
-            episodes={episodes}
+            episodes={episodesWithProgress}
             title="All Episodes"
             onPlay={handlePlay}
             onMore={handleAddToQueue}

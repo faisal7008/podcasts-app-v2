@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { LogOut, Edit3, Music, Heart, Users, Settings } from "lucide-react";
+import { LogOut, UserCircle, Shield, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/use-auth";
@@ -12,56 +12,51 @@ import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { Avatar } from "@/components/profile/avatar";
 import { SettingsTab } from "@/components/profile/settings-tab";
+import { ProfileTab } from "@/components/profile/profile-tab";
+import { SecurityTab } from "@/components/profile/security-tab";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 
-type Tab = "history" | "liked" | "following" | "settings";
+type Tab = "profile" | "security" | "settings";
 
-const tabs: { id: Tab; label: string; icon: typeof Music }[] = [
-  { id: "history", label: "Listening History", icon: Music },
-  { id: "liked", label: "Liked Episodes", icon: Heart },
-  { id: "following", label: "Following", icon: Users },
+const tabs: { id: Tab; label: string; icon: any }[] = [
+  { id: "profile", label: "Profile", icon: UserCircle },
+  { id: "security", label: "Security", icon: Shield },
   { id: "settings", label: "Settings", icon: Settings },
 ];
 
 function ProfileContent() {
   const router = useRouter();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<Tab>("history");
-  const [preferences, setPreferences] = useState({
+  const [activeTab, setActiveTab] = useState<Tab>("profile");
+  const { data: profileData, mutate: mutateProfile } = useSWR("/api/profile", fetcher);
+
+  const preferences = profileData?.preferences || {
     theme: "system",
     playbackSpeed: 1.0,
     notificationsEnabled: true,
-  });
-
-  // Fetch user preferences
-  useEffect(() => {
-    fetch("/api/profile")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.preferences) {
-          setPreferences({
-            theme: data.preferences.theme,
-            playbackSpeed: data.preferences.playbackSpeed,
-            notificationsEnabled: data.preferences.notificationsEnabled,
-          });
-        }
-      })
-      .catch(() => {
-        // Preferences not yet created; use defaults
-      });
-  }, []);
+  };
 
   const handleUpdatePreferences = useCallback(async (updates: Record<string, unknown>) => {
+    // Optimistic UI update
+    mutateProfile(
+      { ...profileData, preferences: { ...preferences, ...updates } },
+      false
+    );
+
     const res = await fetch("/api/profile", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ preferences: updates }),
     });
-    if (!res.ok) throw new Error("Failed to update");
-    const data = await res.json();
-    if (data.preferences) {
-      setPreferences((prev) => ({ ...prev, ...data.preferences }));
+    if (!res.ok) {
+      // Rollback
+      mutateProfile(profileData, false);
+      toast.error("Failed to update preferences");
+      throw new Error("Failed to update");
     }
-  }, []);
+    mutateProfile(); // Revalidate
+  }, [profileData, preferences, mutateProfile]);
 
   const handleDeleteAccount = useCallback(async (password: string) => {
     const res = await fetch("/api/account", {
@@ -149,27 +144,8 @@ function ProfileContent() {
 
               {/* Tab Content */}
               <div className="animate-fade-in">
-                {activeTab === "history" && (
-                  <EmptyState
-                    icon={Music}
-                    title="No listening history"
-                    description="Start listening to episodes to see your history here."
-                  />
-                )}
-                {activeTab === "liked" && (
-                  <EmptyState
-                    icon={Heart}
-                    title="No liked episodes"
-                    description="Like episodes to save them to your collection."
-                  />
-                )}
-                {activeTab === "following" && (
-                  <EmptyState
-                    icon={Users}
-                    title="Not following any podcasts"
-                    description="Follow podcasts to keep up with new episodes."
-                  />
-                )}
+                {activeTab === "profile" && <ProfileTab />}
+                {activeTab === "security" && <SecurityTab />}
                 {activeTab === "settings" && (
                   <SettingsTab
                     preferences={preferences}
@@ -188,25 +164,6 @@ function ProfileContent() {
   );
 }
 
-function EmptyState({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: typeof Music;
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <div className="h-16 w-16 rounded-full bg-divider/50 flex items-center justify-center mb-4">
-        <Icon size={24} className="text-text-muted" />
-      </div>
-      <h3 className="text-subtitle-bold text-text-dark mb-2">{title}</h3>
-      <p className="text-body text-text-muted max-w-sm">{description}</p>
-    </div>
-  );
-}
 
 export default function ProfilePage() {
   return (

@@ -51,3 +51,22 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const history = await prisma.playHistory.findMany({
+      where: { userId: session.user.id },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    return NextResponse.json({ history });
+  } catch (error) {
+    console.error("[API] Get progress error:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

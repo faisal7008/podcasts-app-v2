@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Play,
@@ -15,10 +16,14 @@ import {
   ListMusic,
   Share2,
   Clock,
+  Heart,
 } from "lucide-react";
 import { cn, formatPlayerTime } from "@/lib/utils";
 import { usePlayer } from "@/components/player/player-provider";
 import { QueuePanel } from "@/components/player/queue-panel";
+
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
 
 export function BottomPlayer() {
   const player = usePlayer();
@@ -59,9 +64,55 @@ export function BottomPlayer() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [player]);
 
-  if (!player.currentEpisode || !player.isMiniPlayerVisible) return null;
-
   const episode = player.currentEpisode;
+
+  const { data: likeData, mutate: mutateLike, isLoading: isLikeLoading } = useSWR(
+    episode ? `/api/likes?episodeId=${episode.id}` : null,
+    fetcher
+  );
+
+  const isLiked = likeData?.isLiked ?? false;
+
+  const handleLike = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isLikeLoading || !episode) return;
+    // Optimistic UI update
+    const previousState = isLiked;
+    mutateLike({ isLiked: !isLiked }, false);
+
+    try {
+      if (previousState) {
+        const res = await fetch("/api/likes", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ episodeId: episode.id }),
+        });
+        if (!res.ok) throw new Error("Failed to unlike");
+      } else {
+        const res = await fetch("/api/likes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ episodeId: episode.id }),
+        });
+        if (!res.ok) {
+          if (res.status === 401) {
+            toast.error("Sign in to like episodes");
+            mutateLike({ isLiked: previousState }, false);
+            return;
+          }
+          throw new Error("Failed to like");
+        }
+      }
+      mutateLike(); // Revalidate
+    } catch (err) {
+      mutateLike({ isLiked: previousState }, false);
+      toast.error("Something went wrong. Please try again.");
+    }
+  };
+
+  if (!episode || !player.isMiniPlayerVisible) return null;
+
+
   const progress =
     player.duration > 0 ? (player.currentTime / player.duration) * 100 : 0;
 
@@ -336,18 +387,7 @@ export function BottomPlayer() {
 
                 {/* Bottom controls */}
                 <div className="flex items-center justify-between px-8 lg:px-0 mt-8 mb-8 flex-wrap gap-4">
-                  {/* Secondary Controls (Speed, Timer) */}
-                  <div className="flex items-center gap-6">
-                    <button className="text-[14px] font-bold text-white/60 hover:text-white transition-colors flex items-center justify-center w-8">
-                      1x
-                    </button>
-                    <button className="text-white/40 hover:text-white transition-colors" aria-label="Sleep Timer">
-                      <Clock size={20} />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-6">
-                    <div className="hidden lg:flex items-center gap-3 w-32">
+                  <div className="hidden lg:flex items-center gap-3 w-32">
                       <button
                       onClick={() => player.setVolume(player.volume > 0 ? 0 : 0.8)}
                       className="text-white/40 hover:text-white transition-colors"
@@ -373,17 +413,76 @@ export function BottomPlayer() {
                       }}
                     />
                   </div>
+                  {/* Secondary Controls (Speed, Timer) */}
+                  <div className="flex items-center gap-6">         
+                    <button 
+                      onClick={() => {
+                        const rates = [0.8, 1, 1.25, 1.5, 2];
+                        const currentIndex = rates.indexOf(player.playbackRate) !== -1 ? rates.indexOf(player.playbackRate) : 1;
+                        const nextIndex = (currentIndex + 1) % rates.length;
+                        player.setPlaybackRate(rates[nextIndex]);
+                        toast.success(`Speed: ${rates[nextIndex]}x`);
+                      }}
+                      className="text-[14px] font-bold text-white/60 hover:text-white transition-colors flex items-center justify-center w-8"
+                      title="Playback Speed"
+                    >
+                      {player.playbackRate}x
+                    </button>
+                    <button 
+                      onClick={() => {
+                        const options = [null, 15, 30, 45, 60];
+                        let currentOption = null;
+                        if (player.sleepTimer) {
+                          const msLeft = player.sleepTimer - Date.now();
+                          const minsLeft = Math.ceil(msLeft / 60000);
+                          if (minsLeft <= 15) currentOption = 15;
+                          else if (minsLeft <= 30) currentOption = 30;
+                          else if (minsLeft <= 45) currentOption = 45;
+                          else currentOption = 60;
+                        }
+                        const currentIndex = options.indexOf(currentOption);
+                        const nextIndex = (currentIndex + 1) % options.length;
+                        player.setSleepTimer(options[nextIndex]);
+                      }}
+                      className={cn(
+                        "transition-colors relative", 
+                        player.sleepTimer ? "text-primary hover:text-primary/80" : "text-white/40 hover:text-white"
+                      )} 
+                      aria-label="Sleep Timer"
+                      title={player.sleepTimer ? `Sleep in ${Math.ceil((player.sleepTimer - Date.now()) / 60000)}m` : "Set sleep timer"}
+                    >
+                      <Clock size={20} />
+                      {player.sleepTimer && (
+                        <span className="absolute -bottom-3 left-1/2 -translate-x-1/2 text-[9px] font-bold">
+                          {Math.ceil((player.sleepTimer - Date.now()) / 60000)}m
+                        </span>
+                      )}
+                    </button>
+                  {/* </div> */}
+                  <button
+                    onClick={handleLike}
+                    disabled={isLikeLoading}
+                    className={cn(
+                      "transition-colors flex items-center gap-2 text-sm font-medium",
+                      isLiked ? "text-red-500 hover:text-red-400" : "text-white/40 hover:text-white"
+                    )}
+                    aria-label={isLiked ? "Unlike episode" : "Like episode"}
+                  >
+                    <Heart size={20} fill={isLiked ? "currentColor" : "none"} />
+                    {/* <span className="hidden lg:inline">{isLiked ? "Liked" : "Like"}</span> */}
+                  </button>
                   <button
                     className="text-white/40 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium"
                     aria-label="Share episode"
                   >
                     <Share2 size={20} />
-                    <span className="hidden lg:inline">Share</span>
+                    {/* <span className="hidden lg:inline">Share</span> */}
                   </button>
+                </div>
                 </div>
               </div>
             </div>
-          </div>
+
             
             <QueuePanel />
           </motion.div>

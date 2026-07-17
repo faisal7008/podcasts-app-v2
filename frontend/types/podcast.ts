@@ -23,6 +23,8 @@ export interface Episode {
   artwork: string;
   /** Optional audio source URL */
   audioSrc?: string;
+  /** Playback progress in seconds */
+  progressSeconds?: number;
 }
 
 export interface PlayerContextValue extends PlayerState {
@@ -44,6 +46,8 @@ export interface PlayerContextValue extends PlayerState {
   toggleQueue: () => void;
   toggleMiniPlayer: () => void;
   showToast: (msg: string) => void;
+  setPlaybackRate: (rate: number) => void;
+  setSleepTimer: (minutes: number | null) => void;
 }
 
 /** Represents a top channel entry with ranking. */
@@ -81,6 +85,8 @@ export interface PlayerState {
   isQueueOpen: boolean;
   isMiniPlayerVisible: boolean;
   toastMessage: string | null;
+  playbackRate: number;
+  sleepTimer: number | null;
 }
 
 /** Sort options for episode lists. */

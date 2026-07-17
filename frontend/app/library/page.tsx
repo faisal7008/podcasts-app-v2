@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Music, Heart, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,56 @@ import { useAuth } from "@/hooks/use-auth";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { EpisodeRow } from "@/components/episode-row";
+import { PodcastCard } from "@/components/podcast-card";
+import { usePlayer } from "@/components/player/player-provider";
+import type { Episode, Podcast } from "@/types/podcast";
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+
+const fetchHistory = async () => {
+  const data = await fetcher("/api/progress");
+  const historyEps = await Promise.all(
+    (data.history || []).map(async (h: any) => {
+      try {
+        const ep = await fetcher(`/api/episodes/${h.episodeId}`);
+        return { ...ep, progressSeconds: h.progressSeconds };
+      } catch {
+        return null;
+      }
+    })
+  );
+  return historyEps.filter(Boolean);
+};
+
+const fetchFollows = async () => {
+  const data = await fetcher("/api/follows");
+  const followsPods = await Promise.all(
+    (data.follows || []).map(async (f: any) => {
+      try {
+        const podData = await fetcher(`/api/podcasts/${f.podcastId}`);
+        return podData.podcast;
+      } catch {
+        return null;
+      }
+    })
+  );
+  return followsPods.filter(Boolean);
+};
+
+const fetchLikes = async () => {
+  const data = await fetcher("/api/likes");
+  const likeEps = await Promise.all(
+    (data.likes || []).map(async (l: any) => {
+      try {
+        return await fetcher(`/api/episodes/${l.episodeId}`);
+      } catch {
+        return null;
+      }
+    })
+  );
+  return likeEps.filter(Boolean);
+};
 
 type Tab = "continue" | "following" | "liked";
 
@@ -19,6 +69,16 @@ const tabs: { id: Tab; label: string; icon: typeof Music }[] = [
 
 function LibraryContent() {
   const [activeTab, setActiveTab] = useState<Tab>("continue");
+  const player = usePlayer();
+
+  const { data: historyItems = [], isLoading: isLoadingHistory } = useSWR(activeTab === "continue" ? "history" : null, fetchHistory);
+  const { data: followingItems = [], isLoading: isLoadingFollowing } = useSWR(activeTab === "following" ? "follows" : null, fetchFollows);
+  const { data: likedItems = [], isLoading: isLoadingLikes } = useSWR(activeTab === "liked" ? "likes" : null, fetchLikes);
+
+  const isLoading = 
+    (activeTab === "continue" && isLoadingHistory) || 
+    (activeTab === "following" && isLoadingFollowing) || 
+    (activeTab === "liked" && isLoadingLikes);
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -50,32 +110,72 @@ function LibraryContent() {
 
           {/* Tab Content */}
           <div className="animate-fade-in">
-            {activeTab === "continue" && (
-              <EmptyState
-                icon={Music}
-                title="Nothing to continue"
-                description="Start listening to episodes to pick up where you left off."
-                actionLabel="Explore podcasts"
-                actionHref="/explore"
-              />
-            )}
-            {activeTab === "following" && (
-              <EmptyState
-                icon={Users}
-                title="Not following any podcasts"
-                description="Follow podcasts you love to keep up with new episodes."
-                actionLabel="Explore podcasts"
-                actionHref="/explore"
-              />
-            )}
-            {activeTab === "liked" && (
-              <EmptyState
-                icon={Heart}
-                title="No liked episodes"
-                description="Like episodes to save them to your collection."
-                actionLabel="Explore podcasts"
-                actionHref="/explore"
-              />
+            {isLoading ? (
+              <div className="flex justify-center py-16">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : (
+              <>
+                {activeTab === "continue" && (
+                  historyItems.length > 0 ? (
+                    <div className="flex flex-col">
+                      {historyItems.map((ep) => (
+                        <EpisodeRow 
+                          key={ep.id} 
+                          episode={ep} 
+                          onPlay={() => player.play(ep)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Music}
+                      title="Nothing to continue"
+                      description="Start listening to episodes to pick up where you left off."
+                      actionLabel="Explore podcasts"
+                      actionHref="/explore"
+                    />
+                  )
+                )}
+                {activeTab === "following" && (
+                  followingItems.length > 0 ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
+                      {followingItems.map((pod) => (
+                        <PodcastCard key={pod.id} podcast={pod} size="medium" className="w-full" />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Users}
+                      title="Not following any podcasts"
+                      description="Follow podcasts you love to keep up with new episodes."
+                      actionLabel="Explore podcasts"
+                      actionHref="/explore"
+                    />
+                  )
+                )}
+                {activeTab === "liked" && (
+                  likedItems.length > 0 ? (
+                    <div className="flex flex-col">
+                      {likedItems.map((ep) => (
+                        <EpisodeRow 
+                          key={ep.id} 
+                          episode={ep} 
+                          onPlay={() => player.play(ep)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Heart}
+                      title="No liked episodes"
+                      description="Like episodes to save them to your collection."
+                      actionLabel="Explore podcasts"
+                      actionHref="/explore"
+                    />
+                  )
+                )}
+              </>
             )}
           </div>
         </div>

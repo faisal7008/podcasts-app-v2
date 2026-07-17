@@ -16,35 +16,22 @@ interface PodcastHeadProps {
   className?: string;
 }
 
+import useSWR from "swr";
+import { fetcher } from "@/lib/fetcher";
+
 export function PodcastHead({ podcast, className }: PodcastHeadProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
-  const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const player = usePlayer();
   const { isLoggedIn } = useAuth();
   const category = formatCategory(podcast.category);
 
-  useEffect(() => {
-    if (!isLoggedIn || !podcast.id) {
-      setIsFollowing(false);
-      return;
-    }
+  const { data: followData, mutate: mutateFollow, isLoading: isFollowLoading } = useSWR(
+    isLoggedIn && podcast.id ? `/api/follows?podcastId=${podcast.id}` : null,
+    fetcher
+  );
 
-    const checkFollowStatus = async () => {
-      try {
-        const res = await fetch(`/api/follows?podcastId=${podcast.id}`);
-        if (res.ok) {
-          const data = await res.json();
-          setIsFollowing(data.isFollowing);
-        }
-      } catch (err) {
-        console.error("Failed to check follow status:", err);
-      }
-    };
-
-    checkFollowStatus();
-  }, [podcast.id, isLoggedIn]);
+  const isFollowing = followData?.isFollowing ?? false;
 
   const handleFollow = async () => {
     if (!isLoggedIn) {
@@ -52,17 +39,18 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
       return;
     }
 
-    setIsFollowLoading(true);
+    // Optimistic UI update
+    const previousState = isFollowing;
+    mutateFollow({ isFollowing: !isFollowing }, false);
+
     try {
-      if (isFollowing) {
+      if (previousState) {
         const res = await fetch("/api/follows", {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ podcastId: podcast.id }),
         });
         if (!res.ok) throw new Error();
-        setIsFollowing(false);
-        toast.success("Unfollowed podcast");
       } else {
         const res = await fetch("/api/follows", {
           method: "POST",
@@ -70,13 +58,12 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
           body: JSON.stringify({ podcastId: podcast.id }),
         });
         if (!res.ok) throw new Error();
-        setIsFollowing(true);
-        toast.success("Following podcast!");
       }
+      mutateFollow(); // Revalidate
     } catch {
+      // Revert state on error
+      mutateFollow({ isFollowing: previousState }, false);
       toast.error("Something went wrong. Please try again.");
-    } finally {
-      setIsFollowLoading(false);
     }
   };
 
