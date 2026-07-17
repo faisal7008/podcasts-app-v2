@@ -36,6 +36,12 @@ export function Footer() {
           >
             Search
           </Link>
+          <Link
+            href="/library"
+            className="text-body text-text-muted transition-colors hover:text-text-dark"
+          >
+            Library
+          </Link>
         </nav>
 
         {/* Right — copyright */}

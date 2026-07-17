@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Fira_Sans } from "next/font/google";
+import { Toaster } from "sonner";
 import { GlobalPlayerWrapper } from "@/components/global-player-wrapper";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -63,6 +64,15 @@ export default function RootLayout({
           <GlobalPlayerWrapper>
             {children}
           </GlobalPlayerWrapper>
+          <Toaster
+            position="bottom-right"
+            toastOptions={{
+              className: "font-sans",
+              style: {
+                fontFamily: "var(--font-fira-sans), Arial, Helvetica, sans-serif",
+              },
+            }}
+          />
         </ThemeProvider>
       </body>
     </html>
