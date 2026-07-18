@@ -108,10 +108,10 @@ function transformChannel(
 /**
  * Search podcasts and episodes by term.
  */
-export async function searchPodcasts(term: string) {
+export async function searchPodcasts(term: string, limit: number = 20) {
   const query = `
-    query Search($term: String!) {
-      search(term: $term, filterForTypes: [PODCASTSERIES, PODCASTEPISODE], matchBy: ALL_TERMS) {
+    query Search($term: String!, $limit: Int) {
+      search(term: $term, filterForTypes: [PODCASTSERIES, PODCASTEPISODE], matchBy: ALL_TERMS, limitPerPage: $limit) {
         searchId
         podcastSeries {
           uuid
@@ -145,7 +145,7 @@ export async function searchPodcasts(term: string) {
       podcastSeries: Record<string, unknown>[];
       podcastEpisodes: Record<string, unknown>[];
     };
-  }>(query, { term }, 300);
+  }>(query, { term, limit }, 300);
 
   if (response.errors || !response.data) {
     console.error("Taddy search error:", response.errors);
@@ -247,11 +247,11 @@ export async function getEpisodeById(uuid: string) {
  */
 export async function getTrendingPodcasts(
   term: string = "popular podcast",
-  limit: number = 10
+  limit: number = 20
 ) {
   const query = `
-    query Search($term: String!) {
-      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS) {
+    query Search($term: String!, $limit: Int) {
+      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS, limitPerPage: $limit) {
         searchId
         podcastSeries {
           uuid
@@ -268,7 +268,7 @@ export async function getTrendingPodcasts(
 
   const response = await fetchTaddyAPI<{
     search: { podcastSeries: Record<string, unknown>[] };
-  }>(query, { term });
+  }>(query, { term, limit });
 
   if (response.errors || !response.data) {
     console.error("Taddy trending error:", response.errors);
@@ -289,8 +289,8 @@ export async function getTopChannels(
   limit: number = 8
 ): Promise<Channel[]> {
   const query = `
-    query Search($term: String!) {
-      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS) {
+    query Search($term: String!, $limit: Int) {
+      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS, limitPerPage: $limit) {
         searchId
         podcastSeries {
           uuid
@@ -305,7 +305,7 @@ export async function getTopChannels(
 
   const response = await fetchTaddyAPI<{
     search: { podcastSeries: Record<string, unknown>[] };
-  }>(query, { term });
+  }>(query, { term, limit });
 
   if (response.errors || !response.data) {
     console.error("Taddy top channels error:", response.errors);
@@ -322,11 +322,11 @@ export async function getTopChannels(
  */
 export async function getCategoryPodcasts(
   category: string,
-  limit: number = 20
+  limit: number = 16
 ) {
   const query = `
-    query Search($term: String!) {
-      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS) {
+    query Search($term: String!, $limit: Int) {
+      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS, limitPerPage: $limit) {
         searchId
         podcastSeries {
           uuid
@@ -343,7 +343,7 @@ export async function getCategoryPodcasts(
 
   const response = await fetchTaddyAPI<{
     search: { podcastSeries: Record<string, unknown>[] };
-  }>(query, { term: category });
+  }>(query, { term: category, limit });
 
   if (response.errors || !response.data) {
     console.error("Taddy category search error:", response.errors);
@@ -360,8 +360,8 @@ export async function getCategoryPodcasts(
  */
 export async function getTopCategories(limit: number = 20): Promise<string[]> {
   const query = `
-    query Search($term: String!) {
-      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS) {
+    query Search($term: String!, $limit: Int) {
+      search(term: $term, filterForTypes: PODCASTSERIES, matchBy: MOST_TERMS, limitPerPage: $limit) {
         searchId
         podcastSeries {
           uuid
@@ -374,7 +374,7 @@ export async function getTopCategories(limit: number = 20): Promise<string[]> {
 
   const response = await fetchTaddyAPI<{
     search: { podcastSeries: Record<string, unknown>[] };
-  }>(query, { term: "popular podcast" });
+  }>(query, { term: "popular podcast", limit });
 
   if (response.errors || !response.data) {
     console.error("Taddy get categories error:", response.errors);

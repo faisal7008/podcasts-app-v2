@@ -7,7 +7,7 @@ import { defineConfig, env } from "prisma/config";
  * Loads environment variables from .env file.
  */
 export default defineConfig({
-  earlyAccess: true,
+
   schema: path.join(__dirname, "prisma", "schema.prisma"),
   datasource: {
     url: env("DATABASE_URL"),

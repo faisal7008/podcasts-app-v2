@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Mail, Loader2 } from "lucide-react";
@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 import { AuthCard } from "@/components/auth/auth-card";
 import { authClient } from "@/lib/auth-client";
 
-export default function VerifyEmailPage() {
+function VerifyEmailContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const email = searchParams.get("email") || "";
@@ -139,5 +139,17 @@ export default function VerifyEmailPage() {
         </Link>
       </p>
     </AuthCard>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 size={32} className="animate-spin text-surface-dark" />
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

@@ -118,7 +118,7 @@ function LibraryContent() {
               <>
                 {activeTab === "continue" && (
                   historyItems.length > 0 ? (
-                    <div className="flex flex-col">
+                    <div className="flex flex-col gap-0.5 -mt-7">
                       {historyItems.map((ep) => (
                         <EpisodeRow 
                           key={ep.id} 
@@ -156,7 +156,7 @@ function LibraryContent() {
                 )}
                 {activeTab === "liked" && (
                   likedItems.length > 0 ? (
-                    <div className="flex flex-col">
+                    <div className="flex flex-col gap-0.5 -mt-7">
                       {likedItems.map((ep) => (
                         <EpisodeRow 
                           key={ep.id} 
