@@ -7,18 +7,23 @@ const protectedPaths = ["/library", "/profile", "/settings"];
 const authPaths = ["/auth/signin", "/auth/signup"];
 
 /**
- * Middleware for route protection.
+ * Proxy for route protection (previously middleware).
  *
  * - Protects /library, /profile, /settings → redirects to /auth/signin?callbackUrl={path}
  * - Redirects authenticated users away from /auth/signin, /auth/signup → /
  * - Checks the podcast_app.session_token cookie (matches cookiePrefix in auth.ts)
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Check for better-auth session cookie
-  // Cookie name follows the pattern: {cookiePrefix}.session_token
-  const sessionCookie = request.cookies.get("podcast_app.session_token");
+  // Cookie name follows the pattern: {cookiePrefix}.session_token or __Secure-{cookiePrefix}.session_token
+  const sessionCookie = 
+    request.cookies.get("podcast_app.session_token") || 
+    request.cookies.get("__Secure-podcast_app.session_token") ||
+    request.cookies.get("better-auth.session_token") || 
+    request.cookies.get("__Secure-better-auth.session_token");
+  
   const isAuthenticated = !!sessionCookie?.value;
 
   // Protect routes that require authentication
