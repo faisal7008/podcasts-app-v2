@@ -24,10 +24,6 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: __dirname,
-  turbopack: {
-    root: __dirname,
-  },
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
