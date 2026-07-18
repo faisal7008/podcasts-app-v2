@@ -13,6 +13,12 @@ import { prisma } from "@/lib/prisma";
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   secret: process.env.BETTER_AUTH_SECRET,
+  trustedOrigins: [
+    process.env.NEXT_PUBLIC_APP_URL as string,
+    process.env.BETTER_AUTH_URL as string,
+    "http://localhost:3000",
+    "https://podcasts-ai-app.vercel.app"
+  ].filter(Boolean),
 
   socialProviders: {
     google: {
