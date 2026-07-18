@@ -34,19 +34,29 @@ export function EpisodeRow({
   const isActive = player.currentEpisode?.id === episode.id;
 
   const { data: likeData, mutate: mutateLike, isLoading: isLikeLoading } = useSWR(
-    `/api/likes?episodeId=${episode.id}`,
+    `/api/likes`,
     fetcher
   );
 
-  const isLiked = likeData?.isLiked ?? false;
+  const isLiked = likeData?.likes?.some((like: any) => like.episodeId === episode.id) ?? false;
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     if (isLikeLoading) return;
+    
     // Optimistic UI update
     const previousState = isLiked;
-    mutateLike({ isLiked: !isLiked }, false);
+    const currentLikes = likeData?.likes || [];
+    let newLikes;
+    
+    if (previousState) {
+      newLikes = currentLikes.filter((l: any) => l.episodeId !== episode.id);
+    } else {
+      newLikes = [...currentLikes, { episodeId: episode.id }];
+    }
+    
+    mutateLike({ likes: newLikes }, false);
 
     try {
       if (previousState) {
@@ -65,7 +75,7 @@ export function EpisodeRow({
         if (!res.ok) {
           if (res.status === 401) {
             toast.error("Sign in to like episodes");
-            mutateLike({ isLiked: previousState }, false);
+            mutateLike(likeData, false);
             return;
           }
           throw new Error("Failed to like");
@@ -73,7 +83,7 @@ export function EpisodeRow({
       }
       mutateLike(); // Revalidate
     } catch (err) {
-      mutateLike({ isLiked: previousState }, false);
+      mutateLike(likeData, false);
       toast.error("Something went wrong. Please try again.");
     }
   };

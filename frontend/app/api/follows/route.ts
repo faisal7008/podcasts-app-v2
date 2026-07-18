@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const podcastId = searchParams.get("podcastId");
+    const hydrate = searchParams.get("hydrate") === "true";
 
     if (podcastId) {
       const follow = await prisma.follow.findUnique({
@@ -92,6 +93,22 @@ export async function GET(request: NextRequest) {
     const follows = await prisma.follow.findMany({
       where: { userId: session.user.id },
     });
+    
+    if (hydrate) {
+      const { getPodcastById } = await import("@/lib/taddy");
+      const hydrated = await Promise.all(
+        follows.map(async (f) => {
+          try {
+            const { podcast } = await getPodcastById(f.podcastId);
+            return podcast;
+          } catch {
+            return null;
+          }
+        })
+      );
+      return NextResponse.json({ follows, hydrated: hydrated.filter(Boolean) });
+    }
+    
     return NextResponse.json({ follows });
   } catch (error) {
     console.error("[API] Get follows error:", error);

@@ -59,10 +59,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const hydrate = searchParams.get("hydrate") === "true";
+
     const history = await prisma.playHistory.findMany({
       where: { userId: session.user.id },
       orderBy: { updatedAt: 'desc' }
     });
+    
+    if (hydrate) {
+      const { getEpisodeById } = await import("@/lib/taddy");
+      const hydrated = await Promise.all(
+        history.map(async (h) => {
+          try {
+            const ep = await getEpisodeById(h.episodeId);
+            return { ...ep, progressSeconds: h.progressSeconds };
+          } catch {
+            return null;
+          }
+        })
+      );
+      return NextResponse.json({ history, hydrated: hydrated.filter(Boolean) });
+    }
 
     return NextResponse.json({ history });
   } catch (error) {

@@ -16,47 +16,18 @@ import useSWR from "swr";
 import { fetcher } from "@/lib/fetcher";
 
 const fetchHistory = async () => {
-  const data = await fetcher("/api/progress");
-  const historyEps = await Promise.all(
-    (data.history || []).map(async (h: any) => {
-      try {
-        const ep = await fetcher(`/api/episodes/${h.episodeId}`);
-        return { ...ep, progressSeconds: h.progressSeconds };
-      } catch {
-        return null;
-      }
-    })
-  );
-  return historyEps.filter(Boolean);
+  const data = await fetcher("/api/progress?hydrate=true");
+  return data.hydrated || [];
 };
 
 const fetchFollows = async () => {
-  const data = await fetcher("/api/follows");
-  const followsPods = await Promise.all(
-    (data.follows || []).map(async (f: any) => {
-      try {
-        const podData = await fetcher(`/api/podcasts/${f.podcastId}`);
-        return podData.podcast;
-      } catch {
-        return null;
-      }
-    })
-  );
-  return followsPods.filter(Boolean);
+  const data = await fetcher("/api/follows?hydrate=true");
+  return data.hydrated || [];
 };
 
 const fetchLikes = async () => {
-  const data = await fetcher("/api/likes");
-  const likeEps = await Promise.all(
-    (data.likes || []).map(async (l: any) => {
-      try {
-        return await fetcher(`/api/episodes/${l.episodeId}`);
-      } catch {
-        return null;
-      }
-    })
-  );
-  return likeEps.filter(Boolean);
+  const data = await fetcher("/api/likes?hydrate=true");
+  return data.hydrated || [];
 };
 
 type Tab = "continue" | "following" | "liked";
@@ -119,7 +90,7 @@ function LibraryContent() {
                 {activeTab === "continue" && (
                   historyItems.length > 0 ? (
                     <div className="flex flex-col gap-0.5 -mt-7">
-                      {historyItems.map((ep) => (
+                      {historyItems.map((ep: any) => (
                         <EpisodeRow 
                           key={ep.id} 
                           episode={ep} 
@@ -140,7 +111,7 @@ function LibraryContent() {
                 {activeTab === "following" && (
                   followingItems.length > 0 ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                      {followingItems.map((pod) => (
+                      {followingItems.map((pod: any) => (
                         <PodcastCard key={pod.id} podcast={pod} size="medium" className="w-full" />
                       ))}
                     </div>
@@ -157,7 +128,7 @@ function LibraryContent() {
                 {activeTab === "liked" && (
                   likedItems.length > 0 ? (
                     <div className="flex flex-col gap-0.5 -mt-7">
-                      {likedItems.map((ep) => (
+                      {likedItems.map((ep: any) => (
                         <EpisodeRow 
                           key={ep.id} 
                           episode={ep} 

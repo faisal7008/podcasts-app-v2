@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { SlidersHorizontal, ChevronDown, Check } from "lucide-react";
+import { SlidersHorizontal, ChevronDown, Check, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EpisodeRow } from "@/components/episode-row";
 import { Divider } from "@/components/divider";
@@ -33,6 +33,7 @@ export function EpisodeList({
 }: EpisodeListProps) {
   const [sortBy, setSortBy] = useState<EpisodeSortOption>("newest");
   const [filterBy, setFilterBy] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState("");
   const [showSortMenu, setShowSortMenu] = useState(false);
   const [visibleCount, setVisibleCount] = useState(10);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -60,8 +61,9 @@ export function EpisodeList({
 
   // Filtering (mock filter logic as metadata might be limited)
   const filteredEpisodes = sortedEpisodes.filter((episode) => {
-    if (filterBy === "bonus") return episode.title.toLowerCase().includes("bonus");
-    if (filterBy === "trailer") return episode.title.toLowerCase().includes("trailer");
+    if (filterBy === "bonus" && !episode.title.toLowerCase().includes("bonus")) return false;
+    if (filterBy === "trailer" && !episode.title.toLowerCase().includes("trailer")) return false;
+    if (searchQuery && !episode.title.toLowerCase().includes(searchQuery.toLowerCase()) && !episode.description?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
@@ -81,7 +83,7 @@ export function EpisodeList({
             <h3 className="text-subtitle-bold text-text-dark">{title}</h3>
           )}
           
-          <div className="flex items-center justify-between md:justify-end gap-3 flex-wrap">
+          <div className="flex flex-col items-center justify-between md:justify-end gap-3 flex-wrap">
             {/* Filter Pills */}
             {showSort && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide flex-1 md:flex-none">
@@ -102,6 +104,27 @@ export function EpisodeList({
                     {filter === "all" ? "All Episodes" : filter.charAt(0).toUpperCase() + filter.slice(1)}
                   </button>
                 ))}
+              </div>
+            )}
+
+            
+          </div>
+          <div className="flex w-full justify-between">
+            {showSort && (
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none text-text-muted">
+                  <Search size={14} />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search episodes..."
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setVisibleCount(10);
+                  }}
+                  className="w-[140px] sm:w-[180px] bg-transparent border border-divider focus:border-text-dark transition-colors text-[13px] rounded-full py-1.5 pl-8 pr-4 text-text-dark placeholder:text-text-muted outline-none"
+                />
               </div>
             )}
 
@@ -172,7 +195,7 @@ export function EpisodeList({
                 )}
               </div>
             )}
-          </div>
+            </div>
         </div>
       )}
 

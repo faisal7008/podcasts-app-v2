@@ -76,6 +76,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const episodeId = searchParams.get("episodeId");
+    const hydrate = searchParams.get("hydrate") === "true";
 
     if (episodeId) {
       const like = await prisma.like.findUnique({
@@ -93,6 +94,21 @@ export async function GET(request: NextRequest) {
       where: { userId: session.user.id },
       orderBy: { createdAt: 'desc' }
     });
+    
+    if (hydrate) {
+      const { getEpisodeById } = await import("@/lib/taddy");
+      const hydrated = await Promise.all(
+        likes.map(async (l) => {
+          try {
+            return await getEpisodeById(l.episodeId);
+          } catch {
+            return null;
+          }
+        })
+      );
+      return NextResponse.json({ likes, hydrated: hydrated.filter(Boolean) });
+    }
+    
     return NextResponse.json({ likes });
   } catch (error) {
     console.error("[API] Get likes error:", error);
