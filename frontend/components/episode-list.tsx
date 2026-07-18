@@ -78,36 +78,38 @@ export function EpisodeList({
     <section className={cn("w-full", className)} aria-label={title || "Episodes"}>
       {/* Filters and Sort */}
       {(title || showSort) && (
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-          {title && (
-            <h3 className="text-subtitle-bold text-text-dark">{title}</h3>
-          )}
-          
-          <div className="flex flex-col items-center justify-between md:justify-end gap-3 flex-wrap">
-            {/* Filter Pills */}
-            {showSort && (
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide flex-1 md:flex-none">
-                {["all", "bonus", "trailer"].map((filter) => (
-                  <button
-                    key={filter}
-                    onClick={() => {
-                      setFilterBy(filter);
-                      setVisibleCount(10); // reset pagination
-                    }}
-                    className={cn(
-                      "px-4 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors border",
-                      filterBy === filter
-                        ? "bg-text-dark text-white border-text-dark dark:bg-white dark:text-bg dark:border-white"
-                        : "bg-divider text-text-muted border-transparent hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
-                    )}
-                  >
-                    {filter === "all" ? "All Episodes" : filter.charAt(0).toUpperCase() + filter.slice(1)}
-                  </button>
-                ))}
-              </div>
+        <div>
+          <div className="mb-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {title && (
+              <h3 className="text-subtitle-bold text-text-dark">{title}</h3>
             )}
 
-            
+            <div className="flex flex-col items-center justify-between md:justify-end gap-3 flex-wrap">
+              {/* Filter Pills */}
+              {showSort && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-hide flex-1 md:flex-none">
+                  {["all", "bonus", "trailer"].map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => {
+                        setFilterBy(filter);
+                        setVisibleCount(10); // reset pagination
+                      }}
+                      className={cn(
+                        "px-4 py-1.5 rounded-full text-[13px] font-medium whitespace-nowrap transition-colors border",
+                        filterBy === filter
+                          ? "bg-text-dark text-white border-text-dark dark:bg-white dark:text-bg dark:border-white"
+                          : "bg-divider text-text-muted border-transparent hover:bg-gray-100 dark:hover:bg-surface-dark hover:text-text-dark"
+                      )}
+                    >
+                      {filter === "all" ? "All Episodes" : filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+
+            </div>
           </div>
           <div className="flex w-full justify-between">
             {showSort && (
@@ -123,7 +125,7 @@ export function EpisodeList({
                     setSearchQuery(e.target.value);
                     setVisibleCount(10);
                   }}
-                  className="w-[140px] sm:w-[180px] bg-transparent border border-divider focus:border-text-dark transition-colors text-[13px] rounded-full py-1.5 pl-8 pr-4 text-text-dark placeholder:text-text-muted outline-none"
+                  className="w-full sm:w-[380px] bg-transparent border border-divider focus:border-text-dark transition-colors text-[13px] rounded-full py-1.5 pl-8 pr-4 text-text-dark placeholder:text-text-muted outline-none"
                 />
               </div>
             )}
@@ -158,7 +160,7 @@ export function EpisodeList({
                       onClick={() => setShowSortMenu(false)}
                       aria-hidden="true"
                     />
-                     <div
+                    <div
                       className={cn(
                         "absolute right-0 top-full mt-2 z-[70]",
                         "w-[200px] rounded-xl bg-bg",
@@ -195,12 +197,12 @@ export function EpisodeList({
                 )}
               </div>
             )}
-            </div>
+          </div>
         </div>
       )}
 
       {/* Divider */}
-      <Divider className="mb-0" />
+      <Divider className="mt-2" />
 
       {/* Episode rows */}
       <div className="flex flex-col gap-0" role="list">
@@ -216,7 +218,7 @@ export function EpisodeList({
             )}
           </div>
         ))}
-        
+
         {filteredEpisodes.length === 0 && (
           <div className="py-12 text-center text-text-muted">
             <p>No episodes found.</p>
@@ -225,7 +227,7 @@ export function EpisodeList({
 
         {visibleCount < filteredEpisodes.length && (
           <div className="py-8 flex justify-center">
-            <button 
+            <button
               onClick={handleLoadMore}
               className="px-6 py-2.5 rounded-full border-2 border-divider text-[14px] font-bold text-text-dark hover:border-text-dark hover:bg-gray-50 dark:hover:bg-surface-dark transition-colors"
             >
