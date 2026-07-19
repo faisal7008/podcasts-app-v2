@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronLeft, ChevronRight, Play } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { parseHtml } from "@/lib/sanitize";
+import { sanitizeHtml } from "@/lib/sanitize";
 import type { Podcast } from "@/types/podcast";
 
 interface MainCarouselProps {
@@ -95,9 +95,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
 
           <h2 className="text-title text-white">{podcast.title}</h2>
 
-          <div className="text-body text-white/70 line-clamp-2 max-w-[500px]">
-            {parseHtml(podcast.description)}
-          </div>
+          <div className="text-body text-white/70 line-clamp-2 max-w-[500px]" dangerouslySetInnerHTML={{ __html: sanitizeHtml(podcast.description) }} />
 
           {/* Actions */}
           <div className="mt-2 flex items-center gap-4 self-center md:self-start">

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDuration } from "@/lib/utils";
-import { parseHtml } from "@/lib/sanitize";
+import { sanitizeHtml } from "@/lib/sanitize";
 import type { Episode } from "@/types/podcast";
 import Image from "next/image";
 
@@ -113,18 +113,15 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
           </p>
 
           {/* Description */}
-          {/* <p className="text-body text-text-primary text-center md:text-left line-clamp-4">
-            {parseHtml(episode.description)}
-          </p> */}
+          {/* <div className="text-body text-text-primary text-center md:text-left line-clamp-4" dangerouslySetInnerHTML={{ __html: sanitizeHtml(episode.description) }} /> */}
           <div className="text-center md:text-left relative">
             <div
               className={cn(
                 "text-body text-text-primary prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary",
                 !isExpanded && "line-clamp-4"
               )}
-            >
-              {parseHtml(episode.description)}
-            </div>
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(episode.description) }}
+            />
             {episode.description?.length > 150 && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}

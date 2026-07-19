@@ -1,5 +1,4 @@
 import DOMPurify from "dompurify";
-import parse from "html-react-parser";
 
 /**
  * Sanitizes an HTML string, allowing only a safe subset of tags.
@@ -19,15 +18,6 @@ export function sanitizeHtml(html: string): string {
 
   // Add target="_blank" and rel="noopener noreferrer" to links
   return cleanHtml.replace(/<a /g, '<a target="_blank" rel="noopener noreferrer" ');
-}
-
-/**
- * Parses sanitized HTML string into React nodes.
- */
-export function parseHtml(html: string) {
-  if (!html) return null;
-  const sanitized = sanitizeHtml(html);
-  return parse(sanitized);
 }
 
 /**

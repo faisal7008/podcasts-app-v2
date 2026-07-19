@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Share2, UserPlus, UserCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { parseHtml, formatCategory } from "@/lib/sanitize";
+import { sanitizeHtml, formatCategory } from "@/lib/sanitize";
 import { usePlayer } from "@/components/player/player-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthModal } from "@/components/auth/auth-modal";
@@ -124,9 +124,8 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
                   "text-body text-text-primary prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary",
                   !isExpanded && "line-clamp-4"
                 )}
-              >
-                {parseHtml(podcast.description)}
-              </div>
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(podcast.description) }}
+              />
               {podcast.description?.length > 150 && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}

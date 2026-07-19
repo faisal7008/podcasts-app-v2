@@ -33,7 +33,7 @@ function getGradientForCategory(name: string) {
 
 export default function ExplorePage() {
   const { data: categories, isLoading, isError } = useTopCategories();
-  
+
   const breadcrumbs = [
     { label: "Home", href: "/" },
     { label: "Explore", href: "/explore" },
@@ -45,8 +45,7 @@ export default function ExplorePage() {
 
       <main className="flex-1 pb-16 pt-6 md:pt-8">
         <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px]">
-          <SectionHeading>Explore Categories</SectionHeading>
-          
+
           <div className="mt-6 md:mt-8">
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-20">
@@ -74,11 +73,11 @@ export default function ExplorePage() {
                         getGradientForCategory(categoryName)
                       )} />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors duration-300" />
-                      
+
                       <h3 className="relative z-10 text-xl md:text-2xl font-bold text-white tracking-wide drop-shadow-sm">
                         {categoryName}
                       </h3>
-                      
+
                       <div className="relative z-10 w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm transition-all duration-300 group-hover:translate-x-1 group-hover:bg-white/30">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M5 12h14"></path>

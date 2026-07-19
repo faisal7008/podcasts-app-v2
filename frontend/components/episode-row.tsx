@@ -6,8 +6,7 @@ import { Play, Pause, MoreHorizontal, Heart } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDuration } from "@/lib/utils";
-import { parseHtml, formatEpisodeTitle, formatEpisodeNumber } from "@/lib/sanitize";
-import { motion } from "framer-motion";
+import { sanitizeHtml, formatEpisodeTitle, formatEpisodeNumber } from "@/lib/sanitize";
 import { usePlayer } from "@/components/player/player-provider";
 import type { Episode } from "@/types/podcast";
 
@@ -166,9 +165,7 @@ export function EpisodeRow({
             {epNumber ? `${epNumber} - ${title}` : title}
           </h4>
         </Link>
-        <div className="text-[13px] md:text-[14px] text-text-muted mt-1.5 line-clamp-2 prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary leading-relaxed opacity-90">
-          {parseHtml(episode.description)}
-        </div>
+        <div className="text-[13px] md:text-[14px] text-text-muted mt-1.5 line-clamp-2 prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary leading-relaxed opacity-90" dangerouslySetInnerHTML={{ __html: sanitizeHtml(episode.description) }} />
         {/* Metadata */}
         <p className="text-[12px] md:text-[13px] text-text-light mt-2.5 font-medium flex items-center gap-2 flex-wrap">
           {episode.podcastTitle && (
