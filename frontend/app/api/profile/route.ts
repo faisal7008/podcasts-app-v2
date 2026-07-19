@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { Prisma } from "@/src/generated/prisma";
+import { db } from "@/lib/db";
+import { userProfile, userPreferences } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
 /**
@@ -17,31 +18,28 @@ export async function GET() {
     }
 
     // Ensure profile and preferences exist (first-time access)
-    const [profile, preferences] = await prisma.$transaction([
-      prisma.userProfile.upsert({
-        where: { userId: session.user.id },
-        create: {
-          userId: session.user.id,
-          displayName: session.user.name,
-          avatarUrl: session.user.image,
-        },
-        update: {},
-      }),
-      prisma.userPreferences.upsert({
-        where: { userId: session.user.id },
-        create: { userId: session.user.id },
-        update: {},
-      }),
-    ]);
+    // Drizzle upsert
+    const [profile] = await db.insert(userProfile).values({
+      userId: session.user.id,
+      displayName: session.user.name,
+      avatarUrl: session.user.image,
+    }).onConflictDoUpdate({
+      target: userProfile.userId,
+      set: { updatedAt: new Date() } // dummy update to return the row
+    }).returning();
+
+    const [preferences] = await db.insert(userPreferences).values({
+      userId: session.user.id,
+    }).onConflictDoUpdate({
+      target: userPreferences.userId,
+      set: { userId: session.user.id }
+    }).returning();
 
     return NextResponse.json({
       profile,
       preferences: {
         ...preferences,
-        // Convert Decimal to number for JSON serialization
-        playbackSpeed: preferences.playbackSpeed instanceof Prisma.Decimal
-          ? (preferences.playbackSpeed as unknown as { toNumber(): number }).toNumber()
-          : Number(preferences.playbackSpeed),
+        playbackSpeed: Number(preferences.playbackSpeed),
       },
     });
   } catch (error) {
@@ -63,32 +61,33 @@ export async function PATCH(request: NextRequest) {
     const results: Record<string, unknown> = {};
 
     if (profileUpdates) {
-      results.profile = await prisma.userProfile.upsert({
-        where: { userId: session.user.id },
-        create: {
-          userId: session.user.id,
-          ...profileUpdates,
-        },
-        update: profileUpdates,
-      });
+      const [updatedProfile] = await db.insert(userProfile).values({
+        userId: session.user.id,
+        ...profileUpdates,
+      }).onConflictDoUpdate({
+        target: userProfile.userId,
+        set: profileUpdates,
+      }).returning();
+      results.profile = updatedProfile;
     }
 
     if (prefsUpdates) {
-      const updated = await prisma.userPreferences.upsert({
-        where: { userId: session.user.id },
-        create: {
-          userId: session.user.id,
-          ...prefsUpdates,
-        },
-        update: prefsUpdates,
-      });
+      // Ensure playbackSpeed is correctly parsed if it's passed
+      if (prefsUpdates.playbackSpeed) {
+        prefsUpdates.playbackSpeed = prefsUpdates.playbackSpeed.toString();
+      }
+
+      const [updatedPrefs] = await db.insert(userPreferences).values({
+        userId: session.user.id,
+        ...prefsUpdates,
+      }).onConflictDoUpdate({
+        target: userPreferences.userId,
+        set: prefsUpdates,
+      }).returning();
 
       results.preferences = {
-        ...updated,
-        // Convert Decimal to number for JSON serialization
-        playbackSpeed: updated.playbackSpeed instanceof Prisma.Decimal
-          ? (updated.playbackSpeed as unknown as { toNumber(): number }).toNumber()
-          : Number(updated.playbackSpeed),
+        ...updatedPrefs,
+        playbackSpeed: Number(updatedPrefs.playbackSpeed),
       };
     }
 

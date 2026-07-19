@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { formatDate, formatDuration } from "@/lib/utils";
-import { parseHtml } from "@/lib/sanitize";
+import { sanitizeHtml } from "@/lib/sanitize";
 import type { Episode } from "@/types/podcast";
 import Image from "next/image";
 
@@ -15,7 +15,7 @@ interface EpisodeHeadProps {
   className?: string;
 }
 
-import useSWR from "swr";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
 
 /**
@@ -25,47 +25,53 @@ import { fetcher } from "@/lib/fetcher";
  */
 export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { data: likeData, mutate: mutateLike, isLoading: isLikeLoading } = useSWR(
-    `/api/likes?episodeId=${episode.id}`,
-    fetcher
-  );
+  const queryClient = useQueryClient();
+  const queryKey = episode ? ['likes', episode.id] : null;
+
+  const { data: likeData, isLoading: isLikeLoading } = useQuery({
+    queryKey: queryKey || [],
+    queryFn: () => fetcher(`/api/likes?episodeId=${episode.id}`),
+    enabled: !!episode,
+  });
 
   const isLiked = likeData?.isLiked ?? false;
 
+  const likeMutation = useMutation({
+    mutationFn: async (newIsLiked: boolean) => {
+      const res = await fetch("/api/likes", {
+        method: newIsLiked ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ episodeId: episode.id }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("Sign in to like episodes");
+        throw new Error(newIsLiked ? "Failed to like" : "Failed to unlike");
+      }
+      return res.json();
+    },
+    onMutate: async (newIsLiked) => {
+      if (!queryKey) return;
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, { isLiked: newIsLiked });
+      return { previousState };
+    },
+    onError: (err, newIsLiked, context) => {
+      if (queryKey && context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
+      toast.error(err.message || "Something went wrong. Please try again.");
+    },
+    onSettled: () => {
+      if (queryKey) {
+        queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
+
   const handleLike = async () => {
     if (isLikeLoading) return;
-    // Optimistic UI update
-    const previousState = isLiked;
-    mutateLike({ isLiked: !isLiked }, false);
-
-    try {
-      if (previousState) {
-        const res = await fetch("/api/likes", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ episodeId: episode.id }),
-        });
-        if (!res.ok) throw new Error("Failed to unlike");
-      } else {
-        const res = await fetch("/api/likes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ episodeId: episode.id }),
-        });
-        if (!res.ok) {
-          if (res.status === 401) {
-            toast.error("Sign in to like episodes");
-            mutateLike({ isLiked: previousState }, false);
-            return;
-          }
-          throw new Error("Failed to like");
-        }
-      }
-      mutateLike(); // Revalidate
-    } catch (err) {
-      mutateLike({ isLiked: previousState }, false);
-      toast.error("Something went wrong. Please try again.");
-    }
+    likeMutation.mutate(!isLiked);
   };
 
   return (
@@ -113,18 +119,15 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
           </p>
 
           {/* Description */}
-          {/* <p className="text-body text-text-primary text-center md:text-left line-clamp-4">
-            {parseHtml(episode.description)}
-          </p> */}
+          {/* <div className="text-body text-text-primary text-center md:text-left line-clamp-4" dangerouslySetInnerHTML={{ __html: sanitizeHtml(episode.description) }} /> */}
           <div className="text-center md:text-left relative">
             <div
               className={cn(
                 "text-body text-text-primary prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary",
                 !isExpanded && "line-clamp-4"
               )}
-            >
-              {parseHtml(episode.description)}
-            </div>
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(episode.description) }}
+            />
             {episode.description?.length > 150 && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}

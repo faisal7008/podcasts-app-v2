@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Share2, UserPlus, UserCheck, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { parseHtml, formatCategory } from "@/lib/sanitize";
+import { sanitizeHtml, formatCategory } from "@/lib/sanitize";
 import { usePlayer } from "@/components/player/player-provider";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthModal } from "@/components/auth/auth-modal";
@@ -16,7 +16,7 @@ interface PodcastHeadProps {
   className?: string;
 }
 
-import useSWR from "swr";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
 
 export function PodcastHead({ podcast, className }: PodcastHeadProps) {
@@ -26,45 +26,53 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
   const { isLoggedIn } = useAuth();
   const category = formatCategory(podcast.category);
 
-  const { data: followData, mutate: mutateFollow, isLoading: isFollowLoading } = useSWR(
-    isLoggedIn && podcast.id ? `/api/follows?podcastId=${podcast.id}` : null,
-    fetcher
-  );
+  const queryClient = useQueryClient();
+  const queryKey = isLoggedIn && podcast.id ? ['follows', podcast.id] : null;
+
+  const { data: followData, isLoading: isFollowLoading } = useQuery({
+    queryKey: queryKey || [],
+    queryFn: () => fetcher(`/api/follows?podcastId=${podcast.id}`),
+    enabled: !!queryKey,
+  });
 
   const isFollowing = followData?.isFollowing ?? false;
+
+  const followMutation = useMutation({
+    mutationFn: async (newIsFollowing: boolean) => {
+      const res = await fetch("/api/follows", {
+        method: newIsFollowing ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ podcastId: podcast.id }),
+      });
+      if (!res.ok) throw new Error();
+      return res.json();
+    },
+    onMutate: async (newIsFollowing) => {
+      if (!queryKey) return;
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, { isFollowing: newIsFollowing });
+      return { previousState };
+    },
+    onError: (err, newIsFollowing, context) => {
+      if (queryKey && context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
+      toast.error("Something went wrong. Please try again.");
+    },
+    onSettled: () => {
+      if (queryKey) {
+        queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
 
   const handleFollow = async () => {
     if (!isLoggedIn) {
       setShowAuthModal(true);
       return;
     }
-
-    // Optimistic UI update
-    const previousState = isFollowing;
-    mutateFollow({ isFollowing: !isFollowing }, false);
-
-    try {
-      if (previousState) {
-        const res = await fetch("/api/follows", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ podcastId: podcast.id }),
-        });
-        if (!res.ok) throw new Error();
-      } else {
-        const res = await fetch("/api/follows", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ podcastId: podcast.id }),
-        });
-        if (!res.ok) throw new Error();
-      }
-      mutateFollow(); // Revalidate
-    } catch {
-      // Revert state on error
-      mutateFollow({ isFollowing: previousState }, false);
-      toast.error("Something went wrong. Please try again.");
-    }
+    followMutation.mutate(!isFollowing);
   };
 
   const handleShare = async () => {
@@ -124,9 +132,8 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
                   "text-body text-text-primary prose prose-sm max-w-none prose-p:my-0 prose-a:text-primary",
                   !isExpanded && "line-clamp-4"
                 )}
-              >
-                {parseHtml(podcast.description)}
-              </div>
+                dangerouslySetInnerHTML={{ __html: sanitizeHtml(podcast.description) }}
+              />
               {podcast.description?.length > 150 && (
                 <button
                   onClick={() => setIsExpanded(!isExpanded)}

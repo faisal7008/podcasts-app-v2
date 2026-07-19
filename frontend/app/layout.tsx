@@ -3,6 +3,7 @@ import { Fira_Sans } from "next/font/google";
 import { Toaster } from "sonner";
 import { GlobalPlayerWrapper } from "@/components/global-player-wrapper";
 import { ThemeProvider } from "@/components/theme-provider";
+import { QueryProvider } from "@/components/query-provider";
 import "./globals.css";
 
 const firaSans = Fira_Sans({
@@ -60,20 +61,22 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col font-sans bg-bg text-text-primary">
-        <ThemeProvider>
-          <GlobalPlayerWrapper>
-            {children}
-          </GlobalPlayerWrapper>
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              className: "font-sans",
-              style: {
-                fontFamily: "var(--font-fira-sans), Arial, Helvetica, sans-serif",
-              },
-            }}
-          />
-        </ThemeProvider>
+        <QueryProvider>
+          <ThemeProvider>
+            <GlobalPlayerWrapper>
+              {children}
+            </GlobalPlayerWrapper>
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                className: "font-sans",
+                style: {
+                  fontFamily: "var(--font-fira-sans), Arial, Helvetica, sans-serif",
+                },
+              }}
+            />
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   );

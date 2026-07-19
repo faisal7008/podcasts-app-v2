@@ -3,25 +3,18 @@
 import { ReactNode } from "react";
 import { PlayerProvider, usePlayer } from "@/components/player/player-provider";
 import { BottomPlayer } from "@/components/player/bottom-player";
-import { AnimatePresence, motion } from "framer-motion";
+
 
 function ToastContainer() {
   const { toastMessage } = usePlayer();
   
-  return (
-    <AnimatePresence>
-      {toastMessage && (
-        <motion.div
-          initial={{ opacity: 0, y: 50, scale: 0.9 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{ opacity: 0, y: 20, scale: 0.9 }}
-          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-full bg-primary text-white text-sm font-bold shadow-lg"
-        >
-          {toastMessage}
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
+  return toastMessage ? (
+    <div
+      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] px-4 py-2 rounded-full bg-primary text-white text-sm font-bold shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-300"
+    >
+      {toastMessage}
+    </div>
+  ) : null;
 }
 
 export function GlobalPlayerWrapper({ children }: { children: ReactNode }) {

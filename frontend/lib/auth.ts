@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
-import { prismaAdapter } from "better-auth/adapters/prisma";
-import { prisma } from "@/lib/prisma";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "@/lib/db";
 
 /**
  * Server-side Better Auth configuration.
@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
  * IMPORTANT: Never log passwords, tokens, or session values.
  */
 export const auth = betterAuth({
-  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  database: drizzleAdapter(db, { provider: "pg" }),
   secret: process.env.BETTER_AUTH_SECRET,
   trustedOrigins: [
     process.env.NEXT_PUBLIC_APP_URL as string,

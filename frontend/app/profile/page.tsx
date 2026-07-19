@@ -14,7 +14,7 @@ import { Avatar } from "@/components/profile/avatar";
 import { SettingsTab } from "@/components/profile/settings-tab";
 import { ProfileTab } from "@/components/profile/profile-tab";
 import { SecurityTab } from "@/components/profile/security-tab";
-import useSWR from "swr";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
 
 type Tab = "profile" | "security" | "settings";
@@ -29,7 +29,13 @@ function ProfileContent() {
   const router = useRouter();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>("profile");
-  const { data: profileData, mutate: mutateProfile } = useSWR("/api/profile", fetcher);
+  const queryClient = useQueryClient();
+  const queryKey = ["profile"];
+
+  const { data: profileData } = useQuery({
+    queryKey,
+    queryFn: () => fetcher("/api/profile"),
+  });
 
   const preferences = profileData?.preferences || {
     theme: "system",
@@ -37,26 +43,42 @@ function ProfileContent() {
     notificationsEnabled: true,
   };
 
-  const handleUpdatePreferences = useCallback(async (updates: Record<string, unknown>) => {
-    // Optimistic UI update
-    mutateProfile(
-      { ...profileData, preferences: { ...preferences, ...updates } },
-      false
-    );
-
-    const res = await fetch("/api/profile", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ preferences: updates }),
-    });
-    if (!res.ok) {
-      // Rollback
-      mutateProfile(profileData, false);
+  const updatePreferencesMutation = useMutation({
+    mutationFn: async (updates: Record<string, unknown>) => {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferences: updates }),
+      });
+      if (!res.ok) throw new Error("Failed to update");
+      return res.json();
+    },
+    onMutate: async (updates) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData(queryKey) as any;
+      queryClient.setQueryData(queryKey, {
+        ...previousState,
+        preferences: { ...(previousState?.preferences || {}), ...updates },
+      });
+      return { previousState };
+    },
+    onError: (err, updates, context) => {
+      if (context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
       toast.error("Failed to update preferences");
-      throw new Error("Failed to update");
-    }
-    mutateProfile(); // Revalidate
-  }, [profileData, preferences, mutateProfile]);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
+
+  const handleUpdatePreferences = useCallback(
+    async (updates: Record<string, unknown>) => {
+      updatePreferencesMutation.mutate(updates);
+    },
+    [updatePreferencesMutation]
+  );
 
   const handleDeleteAccount = useCallback(async (password: string) => {
     const res = await fetch("/api/account", {

@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { motion, AnimatePresence } from "framer-motion";
+
 import {
   Play,
   Pause,
@@ -20,9 +20,10 @@ import {
 } from "lucide-react";
 import { cn, formatPlayerTime } from "@/lib/utils";
 import { usePlayer } from "@/components/player/player-provider";
-import { QueuePanel } from "@/components/player/queue-panel";
+import dynamic from "next/dynamic";
+const QueuePanel = dynamic(() => import("@/components/player/queue-panel").then(mod => mod.QueuePanel), { ssr: false });
 
-import useSWR from "swr";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
 
 export function BottomPlayer() {
@@ -66,48 +67,54 @@ export function BottomPlayer() {
 
   const episode = player.currentEpisode;
 
-  const { data: likeData, mutate: mutateLike, isLoading: isLikeLoading } = useSWR(
-    episode ? `/api/likes?episodeId=${episode.id}` : null,
-    fetcher
-  );
+  const queryClient = useQueryClient();
+  const queryKey = episode ? ['likes', episode.id] : null;
+
+  const { data: likeData, isLoading: isLikeLoading } = useQuery({
+    queryKey: queryKey || [],
+    queryFn: () => fetcher(`/api/likes?episodeId=${episode!.id}`),
+    enabled: !!episode,
+  });
 
   const isLiked = likeData?.isLiked ?? false;
+
+  const likeMutation = useMutation({
+    mutationFn: async (newIsLiked: boolean) => {
+      const res = await fetch("/api/likes", {
+        method: newIsLiked ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ episodeId: episode!.id }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("Sign in to like episodes");
+        throw new Error(newIsLiked ? "Failed to like" : "Failed to unlike");
+      }
+      return res.json();
+    },
+    onMutate: async (newIsLiked) => {
+      if (!queryKey) return;
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData(queryKey);
+      queryClient.setQueryData(queryKey, { isLiked: newIsLiked });
+      return { previousState };
+    },
+    onError: (err, newIsLiked, context) => {
+      if (queryKey && context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
+      toast.error(err.message || "Something went wrong. Please try again.");
+    },
+    onSettled: () => {
+      if (queryKey) {
+        queryClient.invalidateQueries({ queryKey });
+      }
+    },
+  });
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (isLikeLoading || !episode) return;
-    // Optimistic UI update
-    const previousState = isLiked;
-    mutateLike({ isLiked: !isLiked }, false);
-
-    try {
-      if (previousState) {
-        const res = await fetch("/api/likes", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ episodeId: episode.id }),
-        });
-        if (!res.ok) throw new Error("Failed to unlike");
-      } else {
-        const res = await fetch("/api/likes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ episodeId: episode.id }),
-        });
-        if (!res.ok) {
-          if (res.status === 401) {
-            toast.error("Sign in to like episodes");
-            mutateLike({ isLiked: previousState }, false);
-            return;
-          }
-          throw new Error("Failed to like");
-        }
-      }
-      mutateLike(); // Revalidate
-    } catch (err) {
-      mutateLike({ isLiked: previousState }, false);
-      toast.error("Something went wrong. Please try again.");
-    }
+    likeMutation.mutate(!isLiked);
   };
 
   if (!episode || !player.isMiniPlayerVisible) return null;
@@ -254,30 +261,17 @@ export function BottomPlayer() {
       </div>
 
       {/* Expanded Player Overlay */}
-      <AnimatePresence>
-        {player.isPlayerOpen && (
-          <motion.div
-            initial={{ y: "100%", opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: "100%", opacity: 0 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className={cn(
-              "fixed inset-0 z-50 flex flex-col bg-surface-dark/95 backdrop-blur-xl text-white",
-              "lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:h-[85vh] lg:rounded-t-[32px] lg:border-t lg:border-white/10",
-              "md:pb-safe-bottom"
-            )}
-            role="dialog"
-            aria-label="Full screen player"
-            aria-modal="true"
-            drag="y"
-            dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(e: MouseEvent | TouchEvent | PointerEvent, { offset, velocity }: { offset: { x: number, y: number }, velocity: { x: number, y: number } }) => {
-              if (offset.y > 100 || velocity.y > 500) {
-                player.closePlayer();
-              }
-            }}
-          >
+      {player.isPlayerOpen && (
+        <div
+          className={cn(
+            "fixed inset-0 z-50 flex flex-col bg-surface-dark/95 backdrop-blur-xl text-white animate-in slide-in-from-bottom-full duration-300",
+            "lg:inset-auto lg:bottom-0 lg:left-0 lg:right-0 lg:h-[85vh] lg:rounded-t-[32px] lg:border-t lg:border-white/10",
+            "md:pb-safe-bottom"
+          )}
+          role="dialog"
+          aria-label="Full screen player"
+          aria-modal="true"
+        >
             {/* Handle bar + close */}
             <div className="flex items-center justify-between px-6 pt-6 lg:pt-8">
               <button
@@ -485,9 +479,8 @@ export function BottomPlayer() {
 
             
             <QueuePanel />
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </div>
+      )}
     </>
   );
 }

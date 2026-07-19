@@ -12,7 +12,7 @@ import { EpisodeRow } from "@/components/episode-row";
 import { PodcastCard } from "@/components/podcast-card";
 import { usePlayer } from "@/components/player/player-provider";
 import type { Episode, Podcast } from "@/types/podcast";
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
 
 const fetchHistory = async () => {
@@ -42,9 +42,23 @@ function LibraryContent() {
   const [activeTab, setActiveTab] = useState<Tab>("continue");
   const player = usePlayer();
 
-  const { data: historyItems = [], isLoading: isLoadingHistory } = useSWR(activeTab === "continue" ? "history" : null, fetchHistory);
-  const { data: followingItems = [], isLoading: isLoadingFollowing } = useSWR(activeTab === "following" ? "follows" : null, fetchFollows);
-  const { data: likedItems = [], isLoading: isLoadingLikes } = useSWR(activeTab === "liked" ? "likes" : null, fetchLikes);
+  const { data: historyItems = [], isLoading: isLoadingHistory } = useQuery({
+    queryKey: ["history"],
+    queryFn: fetchHistory,
+    enabled: activeTab === "continue",
+  });
+  
+  const { data: followingItems = [], isLoading: isLoadingFollowing } = useQuery({
+    queryKey: ["follows"],
+    queryFn: fetchFollows,
+    enabled: activeTab === "following",
+  });
+  
+  const { data: likedItems = [], isLoading: isLoadingLikes } = useQuery({
+    queryKey: ["likes", "hydrated"],
+    queryFn: fetchLikes,
+    enabled: activeTab === "liked",
+  });
 
   const isLoading = 
     (activeTab === "continue" && isLoadingHistory) || 
