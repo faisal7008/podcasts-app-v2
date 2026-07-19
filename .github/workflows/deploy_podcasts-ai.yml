@@ -87,9 +87,9 @@ jobs:
           tenant-id: ${{ secrets.AZUREAPPSERVICE_TENANTID_3BA3C38EF27648958E9529612163C3E3 }}
           subscription-id: ${{ secrets.AZUREAPPSERVICE_SUBSCRIPTIONID_742FA3D1AE414DFBB9CC3F74D0E41FCA }}
 
-      - name: Deploy to Azure Web App
+      - name: 'Deploy to Azure Web App'
         uses: azure/webapps-deploy@v3
         with:
-          app-name: podcasts-ai
-          slot-name: Production
+          app-name: 'podcasts-ai'
+          slot-name: 'Production'
           package: frontend
