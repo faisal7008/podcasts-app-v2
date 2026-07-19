@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { playHistory, like, follow, userPreferences, userProfile } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { headers } from "next/headers";
 
 /**
@@ -52,14 +54,14 @@ export async function DELETE(request: NextRequest) {
 
     const userId = session.user.id;
 
-    // Delete all user data atomically
-    await prisma.$transaction([
-      prisma.playHistory.deleteMany({ where: { userId } }),
-      prisma.like.deleteMany({ where: { userId } }),
-      prisma.follow.deleteMany({ where: { userId } }),
-      prisma.userPreferences.deleteMany({ where: { userId } }),
-      prisma.userProfile.deleteMany({ where: { userId } }),
-    ]);
+    // Delete all user data atomically in a transaction
+    await db.transaction(async (tx) => {
+      await tx.delete(playHistory).where(eq(playHistory.userId, userId));
+      await tx.delete(like).where(eq(like.userId, userId));
+      await tx.delete(follow).where(eq(follow.userId, userId));
+      await tx.delete(userPreferences).where(eq(userPreferences.userId, userId));
+      await tx.delete(userProfile).where(eq(userProfile.userId, userId));
+    });
 
     // Delete the user account via better-auth
     await auth.api.deleteUser({

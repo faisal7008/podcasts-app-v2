@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { playHistory } from "@/lib/db/schema";
+import { eq, desc } from "drizzle-orm";
 import { headers } from "next/headers";
 
 /**
@@ -24,26 +26,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const progress = await prisma.playHistory.upsert({
-      where: {
-        userId_episodeId: {
-          userId: session.user.id,
-          episodeId,
-        },
-      },
-      create: {
-        userId: session.user.id,
-        episodeId,
-        podcastId,
-        progressSeconds: progressSeconds ?? 0,
-        completed: completed ?? false,
-      },
-      update: {
+    const [progress] = await db.insert(playHistory).values({
+      userId: session.user.id,
+      episodeId,
+      podcastId,
+      progressSeconds: progressSeconds ?? 0,
+      completed: completed ?? false,
+    }).onConflictDoUpdate({
+      target: [playHistory.userId, playHistory.episodeId],
+      set: {
         progressSeconds: progressSeconds ?? 0,
         completed: completed ?? false,
         podcastId,
-      },
-    });
+        updatedAt: new Date(),
+      }
+    }).returning();
 
     return NextResponse.json({ progress });
   } catch (error) {
@@ -62,9 +59,9 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const hydrate = searchParams.get("hydrate") === "true";
 
-    const history = await prisma.playHistory.findMany({
-      where: { userId: session.user.id },
-      orderBy: { updatedAt: 'desc' }
+    const history = await db.query.playHistory.findMany({
+      where: eq(playHistory.userId, session.user.id),
+      orderBy: [desc(playHistory.updatedAt)]
     });
     
     if (hydrate) {

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { like } from "@/lib/db/schema";
+import { eq, and, desc } from "drizzle-orm";
 import { headers } from "next/headers";
 
 /**
@@ -20,21 +22,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "episodeId is required" }, { status: 400 });
     }
 
-    const like = await prisma.like.upsert({
-      where: {
-        userId_episodeId: {
-          userId: session.user.id,
-          episodeId,
-        },
-      },
-      create: {
-        userId: session.user.id,
-        episodeId,
-      },
-      update: {},
+    const existingLike = await db.query.like.findFirst({
+      where: and(
+        eq(like.userId, session.user.id),
+        eq(like.episodeId, episodeId)
+      )
     });
 
-    return NextResponse.json({ like }, { status: 201 });
+    if (existingLike) {
+      return NextResponse.json({ like: existingLike }, { status: 200 });
+    }
+
+    const [newLike] = await db.insert(like).values({
+      userId: session.user.id,
+      episodeId,
+    }).returning();
+
+    return NextResponse.json({ like: newLike }, { status: 201 });
   } catch (error) {
     console.error("[API] Like error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -53,12 +57,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "episodeId is required" }, { status: 400 });
     }
 
-    await prisma.like.deleteMany({
-      where: {
-        userId: session.user.id,
-        episodeId,
-      },
-    });
+    await db.delete(like).where(
+      and(
+        eq(like.userId, session.user.id),
+        eq(like.episodeId, episodeId)
+      )
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -79,20 +83,18 @@ export async function GET(request: NextRequest) {
     const hydrate = searchParams.get("hydrate") === "true";
 
     if (episodeId) {
-      const like = await prisma.like.findUnique({
-        where: {
-          userId_episodeId: {
-            userId: session.user.id,
-            episodeId,
-          },
-        },
+      const userLike = await db.query.like.findFirst({
+        where: and(
+          eq(like.userId, session.user.id),
+          eq(like.episodeId, episodeId)
+        )
       });
-      return NextResponse.json({ isLiked: !!like });
+      return NextResponse.json({ isLiked: !!userLike });
     }
 
-    const likes = await prisma.like.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: 'desc' }
+    const likes = await db.query.like.findMany({
+      where: eq(like.userId, session.user.id),
+      orderBy: [desc(like.createdAt)]
     });
     
     if (hydrate) {

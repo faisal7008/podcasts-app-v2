@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { db } from "@/lib/db";
+import { follow } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 
 /**
@@ -20,21 +22,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "podcastId is required" }, { status: 400 });
     }
 
-    const follow = await prisma.follow.upsert({
-      where: {
-        userId_podcastId: {
-          userId: session.user.id,
-          podcastId,
-        },
-      },
-      create: {
-        userId: session.user.id,
-        podcastId,
-      },
-      update: {},
+    const existingFollow = await db.query.follow.findFirst({
+      where: and(
+        eq(follow.userId, session.user.id),
+        eq(follow.podcastId, podcastId)
+      )
     });
 
-    return NextResponse.json({ follow }, { status: 201 });
+    if (existingFollow) {
+      return NextResponse.json({ follow: existingFollow }, { status: 200 });
+    }
+
+    const [newFollow] = await db.insert(follow).values({
+      userId: session.user.id,
+      podcastId,
+    }).returning();
+
+    return NextResponse.json({ follow: newFollow }, { status: 201 });
   } catch (error) {
     console.error("[API] Follow error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -53,12 +57,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "podcastId is required" }, { status: 400 });
     }
 
-    await prisma.follow.deleteMany({
-      where: {
-        userId: session.user.id,
-        podcastId,
-      },
-    });
+    await db.delete(follow).where(
+      and(
+        eq(follow.userId, session.user.id),
+        eq(follow.podcastId, podcastId)
+      )
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -79,19 +83,17 @@ export async function GET(request: NextRequest) {
     const hydrate = searchParams.get("hydrate") === "true";
 
     if (podcastId) {
-      const follow = await prisma.follow.findUnique({
-        where: {
-          userId_podcastId: {
-            userId: session.user.id,
-            podcastId,
-          },
-        },
+      const userFollow = await db.query.follow.findFirst({
+        where: and(
+          eq(follow.userId, session.user.id),
+          eq(follow.podcastId, podcastId)
+        )
       });
-      return NextResponse.json({ isFollowing: !!follow });
+      return NextResponse.json({ isFollowing: !!userFollow });
     }
 
-    const follows = await prisma.follow.findMany({
-      where: { userId: session.user.id },
+    const follows = await db.query.follow.findMany({
+      where: eq(follow.userId, session.user.id),
     });
     
     if (hydrate) {
