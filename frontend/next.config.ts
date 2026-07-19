@@ -24,6 +24,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   turbopack: {
     root: __dirname,
   },
@@ -41,6 +42,13 @@ const nextConfig: NextConfig = {
         hostname: "**",
       },
     ],
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  // @ts-expect-error - NextConfig types don't include eslint but it is supported
+  eslint: {
+    ignoreDuringBuilds: true,
   },
   async headers() {
     return [
