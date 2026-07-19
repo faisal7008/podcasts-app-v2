@@ -91,5 +91,4 @@ jobs:
         uses: azure/webapps-deploy@v3
         with:
           app-name: 'podcasts-ai'
-          slot-name: 'Production'
           package: frontend
