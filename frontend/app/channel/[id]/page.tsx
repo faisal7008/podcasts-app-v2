@@ -9,13 +9,16 @@ import { Divider } from "@/components/divider";
 import { usePlayer } from "@/components/player/player-provider";
 import { usePodcast } from "@/hooks/use-podcasts";
 import type { Episode } from "@/types/podcast";
-import useSWR from "swr";
+import { useQuery } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
 
 function ChannelPageContent({ id }: { id: string }) {
   const { data, isLoading, isError } = usePodcast(id);
   const player = usePlayer();
-  const { data: progressData } = useSWR("/api/progress", fetcher);
+  const { data: progressData } = useQuery({
+    queryKey: ["progress"],
+    queryFn: () => fetcher("/api/progress"),
+  });
 
   if (isLoading) {
     return (

@@ -19,7 +19,7 @@ interface EpisodeRowProps {
   className?: string;
 }
 
-import useSWR from "swr";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { fetcher } from "@/lib/fetcher";
 
 export function EpisodeRow({
@@ -32,59 +32,57 @@ export function EpisodeRow({
   const isPlaying = player.currentEpisode?.id === episode.id && player.isPlaying;
   const isActive = player.currentEpisode?.id === episode.id;
 
-  const { data: likeData, mutate: mutateLike, isLoading: isLikeLoading } = useSWR(
-    `/api/likes`,
-    fetcher
-  );
+  const queryClient = useQueryClient();
+  const queryKey = ['likes'];
+
+  const { data: likeData, isLoading: isLikeLoading } = useQuery({
+    queryKey,
+    queryFn: () => fetcher(`/api/likes`),
+  });
 
   const isLiked = likeData?.likes?.some((like: any) => like.episodeId === episode.id) ?? false;
+
+  const likeMutation = useMutation({
+    mutationFn: async (newIsLiked: boolean) => {
+      const res = await fetch("/api/likes", {
+        method: newIsLiked ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ episodeId: episode.id }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("Sign in to like episodes");
+        throw new Error(newIsLiked ? "Failed to like" : "Failed to unlike");
+      }
+      return res.json();
+    },
+    onMutate: async (newIsLiked) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previousState = queryClient.getQueryData(queryKey) as any;
+      
+      const currentLikes = previousState?.likes || [];
+      const newLikes = newIsLiked 
+        ? [...currentLikes, { episodeId: episode.id }]
+        : currentLikes.filter((l: any) => l.episodeId !== episode.id);
+
+      queryClient.setQueryData(queryKey, { ...previousState, likes: newLikes });
+      return { previousState };
+    },
+    onError: (err, newIsLiked, context) => {
+      if (context?.previousState) {
+        queryClient.setQueryData(queryKey, context.previousState);
+      }
+      toast.error(err.message || "Something went wrong. Please try again.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey });
+    },
+  });
 
   const handleLike = async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     if (isLikeLoading) return;
-    
-    // Optimistic UI update
-    const previousState = isLiked;
-    const currentLikes = likeData?.likes || [];
-    let newLikes;
-    
-    if (previousState) {
-      newLikes = currentLikes.filter((l: any) => l.episodeId !== episode.id);
-    } else {
-      newLikes = [...currentLikes, { episodeId: episode.id }];
-    }
-    
-    mutateLike({ likes: newLikes }, false);
-
-    try {
-      if (previousState) {
-        const res = await fetch("/api/likes", {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ episodeId: episode.id }),
-        });
-        if (!res.ok) throw new Error("Failed to unlike");
-      } else {
-        const res = await fetch("/api/likes", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ episodeId: episode.id }),
-        });
-        if (!res.ok) {
-          if (res.status === 401) {
-            toast.error("Sign in to like episodes");
-            mutateLike(likeData, false);
-            return;
-          }
-          throw new Error("Failed to like");
-        }
-      }
-      mutateLike(); // Revalidate
-    } catch (err) {
-      mutateLike(likeData, false);
-      toast.error("Something went wrong. Please try again.");
-    }
+    likeMutation.mutate(!isLiked);
   };
 
   const handlePlay = () => {
