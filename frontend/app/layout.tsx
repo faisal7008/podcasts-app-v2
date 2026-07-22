@@ -60,7 +60,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-full flex flex-col font-sans bg-bg text-text-primary">
+      <body className="min-h-screen flex flex-col font-sans bg-bg text-text-primary">
         <QueryProvider>
           <ThemeProvider>
             <GlobalPlayerWrapper>

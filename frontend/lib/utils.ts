@@ -26,6 +26,10 @@ export function formatDuration(seconds: number): string {
  * Format duration in seconds to mm:ss or hh:mm:ss for player display.
  */
 export function formatPlayerTime(seconds: number): string {
+  if (!seconds || isNaN(seconds) || !isFinite(seconds) || seconds < 0) {
+    return "0:00";
+  }
+
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   const s = Math.floor(seconds % 60);

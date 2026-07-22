@@ -11,6 +11,7 @@ import {
   Sun,
   Moon,
   Library,
+  Mic,
   LogOut,
   LogIn,
 } from "lucide-react";
@@ -182,6 +183,19 @@ export function Header({
                 Library
               </Link>
             )}
+            {isLoggedIn && (
+              <Link
+                href="/studio"
+                className={cn(
+                  "text-subtitle transition-colors",
+                  pathname?.startsWith("/studio")
+                    ? "text-text-dark font-bold"
+                    : "text-text-muted hover:text-text-dark"
+                )}
+              >
+                Studio
+              </Link>
+            )}
           </nav>
         )}
 
@@ -248,6 +262,14 @@ export function Header({
                     >
                       <Library size={16} />
                       Library
+                    </Link>
+                    <Link
+                      href="/studio"
+                      onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-3 px-3 py-2.5 text-body text-text-dark hover:bg-gray-50 dark:hover:bg-surface-dark transition-colors"
+                    >
+                      <Mic size={16} />
+                      Studio
                     </Link>
                     <button
                       onClick={handleSignOut}

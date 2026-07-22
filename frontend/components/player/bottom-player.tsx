@@ -205,8 +205,8 @@ export function BottomPlayer() {
           </div>
 
           {/* Desktop Progress Bar */}
-          <div className="hidden md:flex flex-1 items-center gap-3 max-w-2xl mx-auto px-4" title={formatPlayerTime(player.currentTime)}>
-            <span className="text-[12px] font-mono text-white/50 w-10 text-right flex-shrink-0">
+          <div className="hidden md:flex flex-1 items-center gap-4 max-w-3xl mx-auto px-6" title={formatPlayerTime(player.currentTime)}>
+            <span className="text-[12px] font-medium font-mono text-white/50 w-12 text-right flex-shrink-0">
               {formatPlayerTime(player.currentTime)}
             </span>
             <input
@@ -215,19 +215,19 @@ export function BottomPlayer() {
               max={player.duration || 100}
               value={player.currentTime}
               onChange={(e) => player.seek(Number(e.target.value))}
-              className="w-full h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+              className="w-full h-1.5 rounded-full appearance-none focus:outline-none focus-visible:outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer transition-all hover:h-2"
               aria-label="Seek position"
               style={{
-                background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.2) ${progress}%)`,
+                background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.1) ${progress}%)`,
               }}
             />
-            <span className="text-[12px] font-mono text-white/50 w-10 flex-shrink-0">
+            <span className="text-[12px] font-medium font-mono text-white/50 w-12 flex-shrink-0">
               {formatPlayerTime(player.duration)}
             </span>
           </div>
 
           {/* Desktop Volume */}
-          <div className="hidden lg:flex items-center gap-2 flex-shrink-0 w-28">
+          <div className="hidden lg:flex items-center gap-3 flex-shrink-0 w-32">
             <button
               onClick={() => player.setVolume(player.volume > 0 ? 0 : 0.8)}
               className="text-white/60 hover:text-white transition-colors"
@@ -242,10 +242,10 @@ export function BottomPlayer() {
               step={0.01}
               value={player.volume}
               onChange={(e) => player.setVolume(Number(e.target.value))}
-              className="w-full h-1 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+              className="w-full h-1.5 rounded-full appearance-none focus:outline-none focus-visible:outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer transition-all hover:h-2"
               aria-label="Volume"
               style={{
-                background: `linear-gradient(to right, #fff ${player.volume * 100}%, rgba(255,255,255,0.2) ${player.volume * 100}%)`,
+                background: `linear-gradient(to right, #fff ${player.volume * 100}%, rgba(255,255,255,0.1) ${player.volume * 100}%)`,
               }}
             />
           </div>
@@ -336,15 +336,18 @@ export function BottomPlayer() {
                     max={player.duration || 100}
                     value={player.currentTime}
                     onChange={(e) => player.seek(Number(e.target.value))}
-                    className="w-full h-2 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+                    className="w-full h-2 rounded-full appearance-none focus:outline-none focus-visible:outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer transition-all hover:h-2.5"
                     aria-label="Seek position"
                     style={{
-                      background: `linear-gradient(to right, #fff ${progress}%, rgba(255,255,255,0.2) ${progress}%)`,
+                      background: `linear-gradient(to right, #fff ${progress}%, rgba(255,255,255,0.1) ${progress}%)`,
                     }}
                   />
                   <div className="flex justify-between mt-2 text-[12px] font-medium text-white/50">
                     <span>{formatPlayerTime(player.currentTime)}</span>
-                    <span>-{formatPlayerTime(player.duration - player.currentTime)}</span>
+                    <span>
+                      {player.duration - player.currentTime > 0.5 ? "-" : ""}
+                      {formatPlayerTime(Math.max(0, player.duration - player.currentTime))}
+                    </span>
                   </div>
                 </div>
 
@@ -400,10 +403,10 @@ export function BottomPlayer() {
                       step={0.01}
                       value={player.volume}
                       onChange={(e) => player.setVolume(Number(e.target.value))}
-                      className="w-full h-1.5 bg-white/20 rounded-full appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer"
+                      className="w-full h-1.5 rounded-full appearance-none focus:outline-none focus-visible:outline-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:rounded-full cursor-pointer transition-all hover:h-2"
                       aria-label="Volume"
                       style={{
-                        background: `linear-gradient(to right, #fff ${player.volume * 100}%, rgba(255,255,255,0.2) ${player.volume * 100}%)`,
+                        background: `linear-gradient(to right, #fff ${player.volume * 100}%, rgba(255,255,255,0.1) ${player.volume * 100}%)`,
                       }}
                     />
                   </div>

@@ -50,7 +50,7 @@ export default function HomePage() {
     );
   }
 
-  const { featured, noteworthy, trending, trendingAlt, topChannels } = data;
+  const { exclusive, featured, noteworthy, trending, trendingAlt, topChannels } = data;
   const firstHalf = topChannels.slice(0, 4);
   const secondHalf = topChannels.slice(4, 8);
 
@@ -70,6 +70,22 @@ export default function HomePage() {
         <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-8 md:py-12">
           <Divider />
         </div>
+
+        {/* Exclusive Podcasts */}
+        {exclusive && exclusive.length > 0 && (
+          <>
+            <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px]">
+              <PodcastsCarousel
+                podcasts={exclusive}
+                title="Exclusive"
+                seeAllHref="/explore"
+              />
+            </section>
+            <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-8 md:py-12">
+              <Divider />
+            </div>
+          </>
+        )}
 
         {/* Podcasts Carousel — New & Noteworthy */}
         {noteworthy.length > 0 && (

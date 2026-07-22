@@ -95,3 +95,55 @@ export const like = pgTable("Like", {
 }, (t) => [
   uniqueIndex("Like_userId_episodeId_key").on(t.userId, t.episodeId)
 ]);
+
+// ─── Studio Tables ──────────────────────────────────────────────────────
+
+export const podcast = pgTable("Podcast", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  author: text("author"),
+  artwork: text("artwork"),
+  category: text("category"),
+  createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
+});
+
+export const episode = pgTable("Episode", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  podcastId: text("podcastId").notNull().references(() => podcast.id, { onDelete: "cascade" }),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  number: integer("number"),
+  title: text("title").notNull(),
+  description: text("description"),
+  datePublished: timestamp("datePublished").notNull().$defaultFn(() => new Date()),
+  artwork: text("artwork"),
+  duration: integer("duration").default(0),
+  audioUrl: text("audioUrl").notNull(),
+  fileSizeBytes: integer("fileSizeBytes").default(0),
+  mimeType: text("mimeType"),
+  status: text("status").notNull().default("draft"),
+  waveformData: text("waveformData"),
+  transcript: text("transcript"),
+  aiSummary: text("aiSummary"),
+  chapters: text("chapters"),
+  showNotes: text("showNotes"),
+  tags: text("tags"),
+  recommendations: text("recommendations"),
+  createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
+});
+
+export const job = pgTable("Job", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  episodeId: text("episodeId").notNull().references(() => episode.id, { onDelete: "cascade" }),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  type: text("type").notNull().default("full_pipeline"),
+  status: text("status").notNull().default("pending"),
+  progress: integer("progress").notNull().default(0),
+  error: text("error"),
+  metadata: text("metadata"),
+  createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
+});

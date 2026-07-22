@@ -109,7 +109,8 @@ export function PlayerProvider({ children }: PlayerProviderProps) {
     };
 
     const onDurationChange = () => {
-      setState((prev) => ({ ...prev, duration: audio.duration || 0 }));
+      const d = audio.duration;
+      setState((prev) => ({ ...prev, duration: isFinite(d) ? d : 0 }));
     };
 
     const onEnded = () => {
