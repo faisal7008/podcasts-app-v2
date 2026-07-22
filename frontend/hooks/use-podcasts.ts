@@ -164,6 +164,7 @@ export function useEpisode(id: string) {
 // ─── useHomeData ────────────────────────────────────────────────────────────
 
 interface HomeData {
+  exclusive: Podcast[];
   featured: Podcast[];
   noteworthy: Podcast[];
   trending: Podcast[];
