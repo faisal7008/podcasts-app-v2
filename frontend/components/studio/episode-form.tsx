@@ -63,7 +63,7 @@ export function EpisodeForm({
       // Step 2: Create episode in database
       setIsCreating(true);
 
-      const response = await fetch("/api/episodes/create", {
+      const response = await fetch(`/api/studio/podcasts/${podcastId}/episodes`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

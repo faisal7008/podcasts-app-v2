@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { episode, podcast } from "@/lib/db/schema";
+import { episode, podcast, job } from "@/lib/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import {
   extractBlobNameFromUrl,
   generateReadSasUrl,
 } from "@/lib/storage";
+import { podcastProcessingQueue } from "@/lib/queue";
 
 /**
  * GET /api/studio/podcasts/[id]/episodes
@@ -79,6 +80,97 @@ export async function GET(
 
     return NextResponse.json(
       { error: "Failed to fetch episodes" },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/studio/podcasts/[id]/episodes
+ * Create a new episode and enqueue a processing job.
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { id: podcastId } = await params;
+    const body = await request.json();
+    const { title, description, audioUrl, mimeType, fileSizeBytes } = body;
+
+    if (!title || !audioUrl) {
+      return NextResponse.json(
+        { error: "Title and audioUrl are required" },
+        { status: 400 }
+      );
+    }
+
+    // Verify ownership
+    const podcastRecord = await db.query.podcast.findFirst({
+      where: and(
+        eq(podcast.id, podcastId),
+        eq(podcast.userId, session.user.id)
+      ),
+    });
+
+    if (!podcastRecord) {
+      return NextResponse.json(
+        { error: "Podcast not found or unauthorized" },
+        { status: 404 }
+      );
+    }
+
+    // Create Episode record in draft status
+    const [newEpisode] = await db
+      .insert(episode)
+      .values({
+        podcastId,
+        userId: session.user.id,
+        title,
+        description,
+        audioUrl,
+        mimeType,
+        fileSizeBytes,
+        status: "processing",
+      })
+      .returning();
+
+    // Create Job record
+    const [newJob] = await db
+      .insert(job)
+      .values({
+        episodeId: newEpisode.id,
+        userId: session.user.id,
+        type: "full_pipeline",
+        status: "pending",
+        progress: 0,
+      })
+      .returning();
+
+    // Enqueue BullMQ job
+    await podcastProcessingQueue.add("process-episode", {
+      episodeId: newEpisode.id,
+      jobId: newJob.id,
+      audioUrl: audioUrl,
+      userId: session.user.id,
+    });
+
+    return NextResponse.json(
+      { episode: newEpisode, job: newJob },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("[API] Studio Podcast Episodes POST error:", error);
+    return NextResponse.json(
+      { error: "Failed to create episode" },
       { status: 500 }
     );
   }

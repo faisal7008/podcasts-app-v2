@@ -1,0 +1,7 @@
+redis==5.0.3
+azure-ai-inference==1.0.0b4
+azure-identity==1.15.0
+openai==1.14.3
+psycopg2-binary==2.9.9
+pgvector==0.2.5
+sqlalchemy==2.0.29
