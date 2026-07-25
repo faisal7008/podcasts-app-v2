@@ -37,6 +37,7 @@ const statusConfig: Record<string, { label: string; color: string; icon: typeof 
   uploading: { label: "Uploading", color: "text-blue-600 bg-blue-50 dark:bg-blue-900/30", icon: Loader2 },
   uploaded: { label: "Uploaded", color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30", icon: Clock },
   processing: { label: "Processing", color: "text-amber-600 bg-amber-50 dark:bg-amber-900/30", icon: Loader2 },
+  processing_ai: { label: "Running AI", color: "text-purple-600 bg-purple-50 dark:bg-purple-900/30", icon: Loader2 },
   ready: { label: "Ready", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30", icon: CheckCircle2 },
   published: { label: "Published", color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30", icon: CheckCircle2 },
   failed: { label: "Failed", color: "text-red-600 bg-red-50 dark:bg-red-900/30", icon: AlertCircle },
@@ -260,6 +261,11 @@ function PodcastDashboardContent() {
   const { data, isLoading } = useQuery<{ podcast: StudioPodcast, episodes: StudioEpisode[] }>({
     queryKey: ["studio-podcast-episodes", podcastId],
     queryFn: () => fetcher(`/api/studio/podcasts/${podcastId}/episodes`),
+    refetchInterval: (query) => {
+      const episodes = query.state.data?.episodes || [];
+      const hasProcessing = episodes.some(ep => ['uploading', 'processing', 'processing_ai'].includes(ep.status));
+      return hasProcessing ? 3000 : false;
+    }
   });
 
   const podcast = data?.podcast;
