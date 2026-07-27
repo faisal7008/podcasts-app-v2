@@ -25,6 +25,14 @@ export interface Episode {
   audioSrc?: string;
   /** Playback progress in seconds */
   progressSeconds?: number;
+  
+  // AI-generated fields
+  transcript?: string | null;
+  aiSummary?: string | null;
+  chapters?: any | null;
+  showNotes?: string | null;
+  tags?: string[] | null;
+  recommendations?: string | null;
 }
 
 export interface PlayerContextValue extends PlayerState {

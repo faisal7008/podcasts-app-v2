@@ -14,7 +14,7 @@ import time
 import azure.cognitiveservices.speech as speechsdk
 import structlog
 from azure.storage.blob import BlobServiceClient
-from openai import AzureOpenAI
+from openai import OpenAI
 from psycopg_pool import ConnectionPool
 from psycopg.rows import dict_row
 
@@ -31,6 +31,8 @@ class DatabaseService:
             conninfo=database_url,
             min_size=2,
             max_size=10,
+            max_idle=300, # 5 minutes max idle time to prevent dropped connections
+            check=ConnectionPool.check_connection,
             kwargs={"row_factory": dict_row},
         )
         logger.info("database_pool_initialized", min_size=2, max_size=10)
@@ -150,15 +152,16 @@ class AIService:
         llm_deployment: str,
         embedding_deployment: str,
     ):
-        self._client = AzureOpenAI(
+        self._client = OpenAI(
             api_key=api_key,
-            api_version=api_version,
-            azure_endpoint=endpoint,
+            base_url=endpoint,
         )
         self._speech_config = speechsdk.SpeechConfig(
             subscription=speech_key,
             endpoint=speech_endpoint
         )
+        self._speech_key = speech_key
+        self._speech_endpoint = speech_endpoint
         self._whisper_deployment = whisper_deployment
         self._llm_deployment = llm_deployment
         self._embedding_deployment = embedding_deployment
@@ -171,65 +174,97 @@ class AIService:
         )
 
     def transcribe(self, audio_path: str) -> str:
-        """Transcribe audio using Azure Cognitive Services Speech."""
+        """Transcribe audio using Azure Cognitive Services Speech REST API with diarization."""
         logger.info("transcription_started", audio_path=audio_path)
         
-        # Convert audio to wav format expected by Speech SDK (16kHz, 16-bit PCM, mono)
-        wav_path = audio_path + ".wav"
+        import requests
+        import json
+        
+        # Ensure endpoint doesn't end with a trailing slash
+        endpoint = self._speech_endpoint.rstrip("/")
+        url = f"{endpoint}/speechtotext/transcriptions:transcribe?api-version=2025-10-15"
+        
+        headers = {
+            "Ocp-Apim-Subscription-Key": self._speech_key,
+            # Let requests set the Content-Type automatically for multipart/form-data
+        }
+        
+        definition = {
+            "locales": ["en-US"],
+            "diarization": {
+                "maxSpeakers": 2,
+                "enabled": True
+            }
+        }
+        
         try:
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", audio_path, "-ar", "16000", "-ac", "1", wav_path],
-                check=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
-            )
-            
-            audio_config = speechsdk.audio.AudioConfig(filename=wav_path)
-            speech_recognizer = speechsdk.SpeechRecognizer(
-                speech_config=self._speech_config, 
-                audio_config=audio_config
-            )
-
-            done = False
-            error_msg = None
-            full_text = []
-
-            def recognized_handler(evt):
-                if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
-                    full_text.append(evt.result.text)
-
-            def canceled_cb(evt):
-                nonlocal done, error_msg
-                if evt.result.reason == speechsdk.ResultReason.Canceled:
-                    cancellation_details = evt.cancellation_details
-                    if cancellation_details.reason == speechsdk.CancellationReason.Error:
-                        logger.error("speech_recognition_error", error=cancellation_details.error_details)
-                        error_msg = cancellation_details.error_details
-                done = True
-
-            def stop_cb(evt):
-                nonlocal done
-                done = True
-
-            speech_recognizer.recognized.connect(recognized_handler)
-            speech_recognizer.session_stopped.connect(stop_cb)
-            speech_recognizer.canceled.connect(canceled_cb)
-
-            speech_recognizer.start_continuous_recognition()
-            while not done:
-                time.sleep(0.5)
+            with open(audio_path, "rb") as audio_file:
+                files = {
+                    "audio": (os.path.basename(audio_path), audio_file, "application/octet-stream"),
+                }
+                data = {
+                    "definition": json.dumps(definition)
+                }
                 
-            speech_recognizer.stop_continuous_recognition()
+                response = requests.post(url, headers=headers, files=files, data=data)
+                
+            response.raise_for_status()
+            result_json = response.json()
             
-            if error_msg:
-                raise Exception(f"Speech SDK Error: {error_msg}")
+            # Extract combined text. Depending on the exact response structure, 
+            # it is typically in result_json["combinedPhrases"][0]["text"] 
+            # or we can concatenate the recognized phrases.
+            # Assuming a standard transcription result:
+            # Extract phrases with timestamps if available to help AI generate chapters
+            if "phrases" in result_json:
+                import re
+                
+                def format_timestamp(offset_ms):
+                    s = int(offset_ms / 1000)
+                    m = s // 60
+                    s = s % 60
+                    h = m // 60
+                    m = m % 60
+                    if h > 0:
+                        return f"[{h:02d}:{m:02d}:{s:02d}]"
+                    return f"[{m:02d}:{s:02d}]"
+                
+                lines = []
+                for p in result_json["phrases"]:
+                    text = p.get("text", "")
+                    offset = p.get("offset")
+                    offset_in_ticks = p.get("offsetInTicks")
+                    offset_ms_val = p.get("offsetMilliseconds")
+                    
+                    offset_ms = 0
+                    if offset_ms_val is not None:
+                        offset_ms = offset_ms_val
+                    elif offset_in_ticks is not None:
+                        offset_ms = offset_in_ticks / 10000
+                    elif isinstance(offset, (int, float)):
+                        offset_ms = offset
+                    elif isinstance(offset, str) and offset.startswith("PT"):
+                        match = re.match(r"PT(?:(\d+(?:\.\d+)?)H)?(?:(\d+(?:\.\d+)?)M)?(?:(\d+(?:\.\d+)?)S)?", offset)
+                        if match:
+                            h_val = float(match.group(1) or 0)
+                            m_val = float(match.group(2) or 0)
+                            s_val = float(match.group(3) or 0)
+                            offset_ms = (h_val * 3600 + m_val * 60 + s_val) * 1000
+                            
+                    lines.append(f"{format_timestamp(offset_ms)} {text}")
+                result_text = "\n".join(lines)
+            elif "combinedPhrases" in result_json and result_json["combinedPhrases"]:
+                result_text = result_json["combinedPhrases"][0].get("text", "")
+            else:
+                result_text = result_json.get("text", str(result_json))
+                
+            logger.info("transcription_completed", length=len(result_text))
+            return result_text
             
-            result = " ".join(full_text)
-            logger.info("transcription_completed", length=len(result))
-            return result
-        finally:
-            if os.path.exists(wav_path):
-                os.remove(wav_path)
+        except requests.exceptions.RequestException as e:
+            error_details = e.response.text if e.response is not None else str(e)
+            logger.error("speech_recognition_error", error=error_details)
+            raise Exception(f"Speech REST API Error: {error_details}")
 
     def generate_metadata(self, transcript_text: str) -> Dict[str, Any]:
         """Generate summary, chapters, notes, tags via LLM."""
@@ -262,26 +297,51 @@ class AIService:
         Transcript:
         {truncated}
         """
+        
+        system_msg = "You are a professional podcast editor and summarizer. Output strictly valid JSON."
+        full_input = f"{system_msg}\n\n{prompt}"
 
-        completion = self._client.chat.completions.create(
+        response = self._client.responses.create(
             model=self._llm_deployment,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a professional podcast editor and summarizer. Output strictly valid JSON.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
+            input=full_input,
         )
 
-        metadata = json.loads(completion.choices[0].message.content)
+        out = response.output[0]
+        content = getattr(out, 'text', getattr(out, 'content', str(out)))
+        
+        if isinstance(content, list):
+            extracted = []
+            for item in content:
+                if isinstance(item, str):
+                    extracted.append(item)
+                elif hasattr(item, 'text'):
+                    extracted.append(item.text)
+                elif isinstance(item, dict) and 'text' in item:
+                    extracted.append(item['text'])
+                else:
+                    extracted.append(str(item))
+            content = "".join(extracted)
+        elif not isinstance(content, str):
+            content = str(content)
+        
+        try:
+            metadata = json.loads(content)
+        except json.JSONDecodeError:
+            content = content.strip("`").removeprefix("json").strip()
+            metadata = json.loads(content)
+            
         logger.info("metadata_generation_completed", keys=list(metadata.keys()))
         return metadata
 
     def generate_embedding(self, text: str) -> List[float]:
         """Generate an embedding vector for the given text."""
         logger.info("embedding_generation_started")
+        
+        # Azure OpenAI will throw a 400 if the input string is completely empty.
+        if not text.strip():
+            logger.warning("empty_text_for_embedding, using fallback string")
+            text = "No speech detected in audio."
+            
         result = self._client.embeddings.create(
             input=[text],
             model=self._embedding_deployment,

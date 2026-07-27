@@ -38,7 +38,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
       {/* Background — artwork with heavy blur */}
       <div className="absolute inset-0 overflow-hidden rounded-[var(--radius-md)]">
         <Image
-          src={podcast.artwork}
+          src={podcast.artwork || "/images/podcast-1.svg"}
           alt=""
           fill
           className="object-cover scale-110 blur-[60px] opacity-40"
@@ -65,7 +65,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
         <div className="relative flex-shrink-0">
           <div className="relative h-[180px] w-[180px] md:h-[192px] md:w-[192px] overflow-hidden rounded-[var(--radius-md)]">
             <Image
-              src={podcast.artwork}
+              src={podcast.artwork || "/images/podcast-1.svg"}
               alt={`${podcast.title} cover art`}
               fill
               className="object-cover"
@@ -76,7 +76,7 @@ export function MainCarousel({ podcasts, className }: MainCarouselProps) {
           {/* Blurred shadow beneath artwork */}
           <div className="absolute -bottom-3 left-3 right-3 h-[40px] overflow-hidden rounded-[var(--radius-md)] opacity-50">
             <Image
-              src={podcast.artwork}
+              src={podcast.artwork || "/images/podcast-1.svg"}
               alt=""
               fill
               className="object-cover blur-[20px]"

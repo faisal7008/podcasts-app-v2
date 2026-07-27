@@ -50,7 +50,7 @@ export function PodcastCard({
         )}
       >
         <Image
-          src={podcast.artwork}
+          src={podcast.artwork || "/images/podcast-1.svg"}
           alt={`${podcast.title} cover art`}
           width={imageSizes[size]}
           height={imageSizes[size]}

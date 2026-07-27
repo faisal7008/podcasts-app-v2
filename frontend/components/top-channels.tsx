@@ -34,7 +34,7 @@ export function TopChannels({ channels, className }: TopChannelsProps) {
           {/* Artwork */}
           <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-[var(--radius-sm)]">
             <Image
-              src={channel.artwork}
+              src={channel.artwork || "/images/podcast-1.svg"}
               alt={`${channel.name} artwork`}
               fill
               className="object-cover"

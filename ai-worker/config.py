@@ -35,7 +35,7 @@ class Settings(BaseSettings):
 
     # Model Deployments
     whisper_deployment_name: str = Field(default="whisper", alias="WHISPER_DEPLOYMENT_NAME")
-    llm_deployment_name: str = Field(default="gpt-4o", alias="LLM_DEPLOYMENT_NAME")
+    llm_deployment_name: str = Field(default="gpt-5.4-nano", alias="LLM_DEPLOYMENT_NAME")
     embedding_deployment_name: str = Field(default="text-embedding-3-small", alias="EMBEDDING_DEPLOYMENT_NAME")
 
     # Worker Settings

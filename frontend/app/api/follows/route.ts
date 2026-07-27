@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { follow } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
+import { SocialService } from "@/services/social.service";
 
 /**
  * POST /api/follows — Follow a podcast
@@ -22,23 +20,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "podcastId is required" }, { status: 400 });
     }
 
-    const existingFollow = await db.query.follow.findFirst({
-      where: and(
-        eq(follow.userId, session.user.id),
-        eq(follow.podcastId, podcastId)
-      )
-    });
-
-    if (existingFollow) {
-      return NextResponse.json({ follow: existingFollow }, { status: 200 });
-    }
-
-    const [newFollow] = await db.insert(follow).values({
-      userId: session.user.id,
-      podcastId,
-    }).returning();
-
-    return NextResponse.json({ follow: newFollow }, { status: 201 });
+    const follow = await SocialService.addFollow(session.user.id, podcastId);
+    return NextResponse.json({ follow }, { status: 201 });
   } catch (error) {
     console.error("[API] Follow error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -57,12 +40,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "podcastId is required" }, { status: 400 });
     }
 
-    await db.delete(follow).where(
-      and(
-        eq(follow.userId, session.user.id),
-        eq(follow.podcastId, podcastId)
-      )
-    );
+    await SocialService.removeFollow(session.user.id, podcastId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -83,18 +61,11 @@ export async function GET(request: NextRequest) {
     const hydrate = searchParams.get("hydrate") === "true";
 
     if (podcastId) {
-      const userFollow = await db.query.follow.findFirst({
-        where: and(
-          eq(follow.userId, session.user.id),
-          eq(follow.podcastId, podcastId)
-        )
-      });
+      const userFollow = await SocialService.getFollow(session.user.id, podcastId);
       return NextResponse.json({ isFollowing: !!userFollow });
     }
 
-    const follows = await db.query.follow.findMany({
-      where: eq(follow.userId, session.user.id),
-    });
+    const follows = await SocialService.getFollowsByUser(session.user.id);
     
     if (hydrate) {
       const { getPodcastById } = await import("@/lib/taddy");

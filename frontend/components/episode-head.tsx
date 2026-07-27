@@ -81,7 +81,7 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
         <div className="relative flex-shrink-0 self-center md:self-start">
           <div className="relative h-[180px] w-[180px] md:h-[200px] md:w-[200px] overflow-hidden rounded-[var(--radius-md)]">
             <Image
-              src={episode.artwork}
+              src={episode.artwork || "/images/podcast-1.svg"}
               alt={`${episode.title} episode art`}
               fill
               className="object-cover"
@@ -92,7 +92,7 @@ export function EpisodeHead({ episode, onPlay, className }: EpisodeHeadProps) {
           {/* Blurred shadow */}
           <div className="absolute -bottom-3 left-4 right-4 h-[50px] overflow-hidden rounded-[var(--radius-md)] opacity-40">
             <Image
-              src={episode.artwork}
+              src={episode.artwork || "/images/podcast-1.svg"}
               alt=""
               fill
               className="object-cover blur-[40px]"

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { like } from "@/lib/db/schema";
-import { eq, and, desc } from "drizzle-orm";
 import { headers } from "next/headers";
+import { SocialService } from "@/services/social.service";
 
 /**
  * POST /api/likes — Like an episode
@@ -22,23 +20,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "episodeId is required" }, { status: 400 });
     }
 
-    const existingLike = await db.query.like.findFirst({
-      where: and(
-        eq(like.userId, session.user.id),
-        eq(like.episodeId, episodeId)
-      )
-    });
-
-    if (existingLike) {
-      return NextResponse.json({ like: existingLike }, { status: 200 });
-    }
-
-    const [newLike] = await db.insert(like).values({
-      userId: session.user.id,
-      episodeId,
-    }).returning();
-
-    return NextResponse.json({ like: newLike }, { status: 201 });
+    const like = await SocialService.addLike(session.user.id, episodeId);
+    return NextResponse.json({ like }, { status: 201 });
   } catch (error) {
     console.error("[API] Like error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
@@ -57,12 +40,7 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "episodeId is required" }, { status: 400 });
     }
 
-    await db.delete(like).where(
-      and(
-        eq(like.userId, session.user.id),
-        eq(like.episodeId, episodeId)
-      )
-    );
+    await SocialService.removeLike(session.user.id, episodeId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -83,19 +61,11 @@ export async function GET(request: NextRequest) {
     const hydrate = searchParams.get("hydrate") === "true";
 
     if (episodeId) {
-      const userLike = await db.query.like.findFirst({
-        where: and(
-          eq(like.userId, session.user.id),
-          eq(like.episodeId, episodeId)
-        )
-      });
+      const userLike = await SocialService.getLike(session.user.id, episodeId);
       return NextResponse.json({ isLiked: !!userLike });
     }
 
-    const likes = await db.query.like.findMany({
-      where: eq(like.userId, session.user.id),
-      orderBy: [desc(like.createdAt)]
-    });
+    const likes = await SocialService.getLikesByUser(session.user.id);
     
     if (hydrate) {
       const { getEpisodeById } = await import("@/lib/taddy");

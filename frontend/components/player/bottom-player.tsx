@@ -152,7 +152,7 @@ export function BottomPlayer() {
             aria-label="Expand player"
           >
             <Image
-              src={episode.artwork}
+              src={episode.artwork || "/images/podcast-1.svg"}
               alt={`${episode.title} cover`}
               fill
               className="object-cover"
@@ -306,7 +306,7 @@ export function BottomPlayer() {
               <div className="flex-1 flex items-center justify-center px-10 mt-8 lg:mt-0 lg:max-w-[400px]">
                 <div className="relative w-full max-w-[320px] lg:max-w-full aspect-square overflow-hidden rounded-2xl shadow-2xl">
                   <Image
-                    src={episode.artwork}
+                    src={episode.artwork || "/images/podcast-1.svg"}
                     alt={`${episode.title} cover art`}
                     fill
                     className="object-cover"

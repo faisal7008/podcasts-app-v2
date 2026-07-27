@@ -92,24 +92,22 @@ async def process_ai_job(job, token):
         # 1. Download audio
         log.info("downloading_audio")
         audio_path = os.path.join(temp_dir, "audio.m4a")
-        storage_service.download_blob(audio_url, audio_path)
+        await asyncio.to_thread(storage_service.download_blob, audio_url, audio_path)
 
         # 2. Transcribe with Whisper
         log.info("transcribing_audio")
         db_service.update_job_progress(job_id, 80, "transcribing")
-        transcript_text = ai_service.transcribe(audio_path)
+        transcript_text = await asyncio.to_thread(ai_service.transcribe, audio_path)
         await job.updateProgress(85)
 
-        # 3. Generate metadata with LLM
-        log.info("generating_metadata")
-        db_service.update_job_progress(job_id, 85, "generating_metadata")
-        metadata = ai_service.generate_metadata(transcript_text)
-        await job.updateProgress(92)
-
-        # 4. Generate embeddings
-        log.info("generating_embeddings")
-        db_service.update_job_progress(job_id, 92, "generating_embeddings")
-        ai_service.generate_embedding(metadata.get("aiSummary", ""))
+        # 3 & 4. Generate metadata and embeddings in parallel
+        log.info("generating_metadata_and_embeddings")
+        db_service.update_job_progress(job_id, 85, "generating_ai_content")
+        
+        metadata_task = asyncio.to_thread(ai_service.generate_metadata, transcript_text)
+        embedding_task = asyncio.to_thread(ai_service.generate_embedding, transcript_text[:15000])
+        
+        metadata, _ = await asyncio.gather(metadata_task, embedding_task)
         await job.updateProgress(96)
 
         # 5. Save to database
@@ -156,7 +154,6 @@ async def main():
         llm_model=settings.llm_deployment_name,
         embedding_model=settings.embedding_deployment_name,
         concurrency=settings.worker_concurrency,
-        # NOTE: No secrets logged
     )
 
     # Initialize singleton services
@@ -178,7 +175,7 @@ async def main():
 
     # Start BullMQ worker
     worker = Worker(
-        "podcast-ai-processing",
+        "ai-pipeline",
         process_ai_job,
         {
             "connection": f"redis://{':{pwd}@'.format(pwd=settings.redis_password) if settings.redis_password else ''}{settings.redis_host}:{settings.redis_port}",
@@ -188,7 +185,7 @@ async def main():
 
     logger.info(
         "worker_listening",
-        queue="podcast-ai-processing",
+        queue="ai-pipeline",
         concurrency=settings.worker_concurrency,
     )
 

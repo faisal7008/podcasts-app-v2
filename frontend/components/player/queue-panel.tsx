@@ -82,7 +82,7 @@ export function QueuePanel() {
             <div className="flex items-center gap-3">
               <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-[8px] shadow-md">
                 <Image
-                  src={player.currentEpisode.artwork}
+                  src={player.currentEpisode.artwork || "/images/podcast-1.svg"}
                   alt=""
                   fill
                   className="object-cover"
@@ -148,7 +148,7 @@ export function QueuePanel() {
                     />
                     <div className="relative h-10 w-10 flex-shrink-0 overflow-hidden rounded-[6px]">
                       <Image
-                        src={item.episode.artwork}
+                        src={item.episode.artwork || "/images/podcast-1.svg"}
                         alt=""
                         fill
                         className="object-cover"

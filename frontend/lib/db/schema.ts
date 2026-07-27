@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, numeric, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, numeric, uniqueIndex, index, jsonb } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -67,16 +67,17 @@ export const userPreferences = pgTable("UserPreferences", {
 
 export const follow = pgTable("Follow", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("userId").notNull(),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
   podcastId: text("podcastId").notNull(),
   createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
 }, (t) => [
-  uniqueIndex("Follow_userId_podcastId_key").on(t.userId, t.podcastId)
+  uniqueIndex("Follow_userId_podcastId_key").on(t.userId, t.podcastId),
+  index("Follow_userId_idx").on(t.userId)
 ]);
 
 export const playHistory = pgTable("PlayHistory", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("userId").notNull(),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
   episodeId: text("episodeId").notNull(),
   podcastId: text("podcastId").notNull(),
   progressSeconds: integer("progressSeconds").notNull().default(0),
@@ -84,16 +85,18 @@ export const playHistory = pgTable("PlayHistory", {
   playedAt: timestamp("playedAt").notNull().$defaultFn(() => new Date()),
   updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
 }, (t) => [
-  uniqueIndex("PlayHistory_userId_episodeId_key").on(t.userId, t.episodeId)
+  uniqueIndex("PlayHistory_userId_episodeId_key").on(t.userId, t.episodeId),
+  index("PlayHistory_userId_idx").on(t.userId)
 ]);
 
 export const like = pgTable("Like", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
-  userId: text("userId").notNull(),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
   episodeId: text("episodeId").notNull(),
   createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
 }, (t) => [
-  uniqueIndex("Like_userId_episodeId_key").on(t.userId, t.episodeId)
+  uniqueIndex("Like_userId_episodeId_key").on(t.userId, t.episodeId),
+  index("Like_userId_idx").on(t.userId)
 ]);
 
 // ─── Studio Tables ──────────────────────────────────────────────────────
@@ -124,16 +127,21 @@ export const episode = pgTable("Episode", {
   fileSizeBytes: integer("fileSizeBytes").default(0),
   mimeType: text("mimeType"),
   status: text("status").notNull().default("draft"),
-  waveformData: text("waveformData"),
+  waveformData: jsonb("waveformData"),
   transcript: text("transcript"),
   aiSummary: text("aiSummary"),
-  chapters: text("chapters"),
+  chapters: jsonb("chapters"),
   showNotes: text("showNotes"),
-  tags: text("tags"),
+  tags: jsonb("tags"),
   recommendations: text("recommendations"),
   createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
   updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
-});
+}, (t) => [
+  index("Episode_podcastId_idx").on(t.podcastId),
+  index("Episode_userId_idx").on(t.userId),
+  index("Episode_status_idx").on(t.status),
+  index("Episode_createdAt_idx").on(t.createdAt)
+]);
 
 export const job = pgTable("Job", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),

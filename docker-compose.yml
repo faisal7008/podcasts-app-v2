@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: myuser
+      POSTGRES_PASSWORD: mypassword
+      POSTGRES_DB: podcasts
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:8
+    ports:
+      - "6379:6379"
+
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
+    env_file:
+      - ./frontend/.env
+    depends_on:
+      - db
+      - redis
+
+  media-worker:
+    build:
+      context: ./media-worker
+    env_file:
+      - ./media-worker/.env
+    depends_on:
+      - db
+      - redis
+
+  ai-worker:
+    build:
+      context: ./ai-worker
+    env_file:
+      - ./ai-worker/.env
+    depends_on:
+      - db
+      - redis

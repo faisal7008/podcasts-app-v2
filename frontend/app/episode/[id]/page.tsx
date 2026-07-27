@@ -4,6 +4,7 @@ import { use } from "react";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { EpisodeHead } from "@/components/episode-head";
+import { EpisodeAIContent } from "@/components/episode-ai-content";
 import { EpisodeList } from "@/components/episode-list";
 import { Divider } from "@/components/divider";
 import { usePlayer } from "@/components/player/player-provider";
@@ -77,6 +78,13 @@ function EpisodePageContent({ id }: { id: string }) {
         <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
           <EpisodeHead episode={episode} onPlay={handlePlayCurrent} />
         </section>
+
+        {/* AI Content */}
+        {(episode.aiSummary || episode.transcript || episode.showNotes || (episode.chapters && episode.chapters.length > 0)) && (
+          <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
+            <EpisodeAIContent episode={episode} />
+          </section>
+        )}
 
         {/* More Episodes from the same podcast */}
         {moreEpisodes.length > 0 && (

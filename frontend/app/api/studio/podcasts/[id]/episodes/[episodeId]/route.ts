@@ -5,6 +5,7 @@ import { episode, podcast } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
+import { deleteBlob, extractBlobNameFromUrl } from "@/lib/storage";
 
 const updateEpisodeSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
@@ -92,6 +93,17 @@ export async function DELETE(
 
     if (!deletedEpisode) {
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
+    }
+
+    // Attempt to delete blob storage artifacts
+    try {
+      if (deletedEpisode.audioUrl) {
+        const audioBlobName = extractBlobNameFromUrl(deletedEpisode.audioUrl);
+        if (audioBlobName) await deleteBlob(audioBlobName);
+      }
+    } catch (cleanupError) {
+      console.error("[API] Failed to clean up blobs for deleted episode:", cleanupError);
+      // We don't fail the deletion if cleanup fails, but we log it
     }
 
     return NextResponse.json({ success: true });

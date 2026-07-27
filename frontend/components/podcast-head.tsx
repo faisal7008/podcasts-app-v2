@@ -92,7 +92,7 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
           <div className="relative flex-shrink-0 self-center md:self-start">
             <div className="relative h-[200px] w-[200px] md:h-[240px] md:w-[240px] overflow-hidden rounded-[var(--radius-md)]">
               <Image
-                src={podcast.artwork}
+                src={podcast.artwork || "/images/podcast-1.svg"}
                 alt={`${podcast.title} cover art`}
                 fill
                 className="object-cover"
@@ -103,7 +103,7 @@ export function PodcastHead({ podcast, className }: PodcastHeadProps) {
             {/* Blurred shadow */}
             <div className="absolute -bottom-4 left-4 right-4 h-[60px] overflow-hidden rounded-[var(--radius-md)] opacity-40">
               <Image
-                src={podcast.artwork}
+                src={podcast.artwork || "/images/podcast-1.svg"}
                 alt=""
                 fill
                 className="object-cover blur-[40px]"

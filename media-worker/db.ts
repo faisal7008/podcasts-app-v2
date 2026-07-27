@@ -1,6 +1,6 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { pgTable, text, integer, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, timestamp, jsonb } from "drizzle-orm/pg-core";
 
 // Minimal schema for the worker
 export const episode = pgTable("Episode", {
@@ -13,7 +13,7 @@ export const episode = pgTable("Episode", {
   fileSizeBytes: integer("fileSizeBytes").default(0),
   mimeType: text("mimeType"),
   status: text("status").notNull().default("draft"),
-  waveformData: text("waveformData"),
+  waveformData: jsonb("waveformData"),
   updatedAt: timestamp("updatedAt").notNull(),
 });
 
@@ -34,7 +34,7 @@ if (!process.env.DATABASE_URL) {
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
+  ssl: process.env.NODE_ENV === "production" ? (process.env.DATABASE_CA_CERT ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT } : true) : { rejectUnauthorized: false },
   max: 10,
   min: 2,
   idleTimeoutMillis: 30000,

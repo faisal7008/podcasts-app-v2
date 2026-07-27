@@ -1,5 +1,6 @@
 import "dotenv/config";
 import { Worker, Queue, Job } from "bullmq";
+import { QueueNames } from "@podcasts/shared";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
@@ -7,7 +8,7 @@ import pino from "pino";
 import { db, pool, episode, job as jobSchema } from "./db";
 import { eq } from "drizzle-orm";
 import { downloadBlob, uploadBlob, extractBlobNameFromUrl } from "./storage";
-import { processAudio, generateWaveform } from "./audio";
+import { processAudio } from "./audio";
 
 // --- Structured Logger ---
 const logger = pino({
@@ -26,7 +27,15 @@ const connection = {
 };
 
 // --- AI Queue (BullMQ, replaces raw redis.lpush) ---
-const aiQueue = new Queue("podcast-ai-processing", { connection });
+const aiQueue = new Queue(QueueNames.AI_PIPELINE, { 
+  connection,
+  defaultJobOptions: {
+    attempts: 3,
+    backoff: { type: "exponential", delay: 2000 },
+    removeOnComplete: true,
+    removeOnFail: false
+  }
+});
 
 // --- Job Payload Validation ---
 interface JobPayload {
@@ -100,9 +109,7 @@ async function processJob(job: Job) {
     await updateJobProgress(jobId, 60);
     await job.updateProgress(60);
 
-    // 3. Generate waveform
-    log.info("generating_waveform");
-    const waveform = await generateWaveform(outputPath);
+    // 3. Generate waveform (deferred to client)
     await updateJobProgress(jobId, 70);
     await job.updateProgress(70);
 
@@ -121,7 +128,6 @@ async function processJob(job: Job) {
         audioUrl: newUrl,
         fileSizeBytes: stats.size,
         mimeType: "audio/m4a",
-        waveformData: JSON.stringify(waveform),
         updatedAt: new Date(),
       })
       .where(eq(episode.id, episodeId));
@@ -160,7 +166,7 @@ async function processJob(job: Job) {
 // --- Worker Setup ---
 const concurrency = parseInt(process.env.WORKER_CONCURRENCY || "3");
 
-const worker = new Worker("podcast-processing", processJob, {
+const worker = new Worker(QueueNames.MEDIA_PIPELINE, processJob, {
   connection,
   concurrency,
 });
@@ -181,7 +187,7 @@ worker.on("error", (err) => {
 });
 
 logger.info(
-  { queue: "podcast-processing", concurrency },
+  { queue: QueueNames.MEDIA_PIPELINE, concurrency },
   "media_worker_listening"
 );
 

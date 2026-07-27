@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { podcast, episode } from "@/lib/db/schema";
 import { desc, eq, sql } from "drizzle-orm";
 
+export const revalidate = 3600; // 1 hour
+
 /**
  * GET /api/podcasts/home
  * Returns all data needed for the home page in a single request

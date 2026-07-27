@@ -1,14 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { episode, podcast, job } from "@/lib/db/schema";
-import { and, desc, eq } from "drizzle-orm";
 import { headers } from "next/headers";
 import {
   extractBlobNameFromUrl,
   generateReadSasUrl,
 } from "@/lib/storage";
-import { podcastProcessingQueue } from "@/lib/queue";
+import { PodcastService } from "@/services/podcast.service";
+import { EpisodeService } from "@/services/episode.service";
 
 /**
  * GET /api/studio/podcasts/[id]/episodes
@@ -33,12 +31,7 @@ export async function GET(
     const { id: podcastId } = await params;
 
     // Verify ownership of the podcast
-    const podcastRecord = await db.query.podcast.findFirst({
-      where: and(
-        eq(podcast.id, podcastId),
-        eq(podcast.userId, session.user.id)
-      ),
-    });
+    const podcastRecord = await PodcastService.verifyOwnership(podcastId, session.user.id);
 
     if (!podcastRecord) {
       return NextResponse.json(
@@ -48,16 +41,7 @@ export async function GET(
     }
 
     // Fetch episodes
-    const episodes = await db
-      .select()
-      .from(episode)
-      .where(
-        and(
-          eq(episode.podcastId, podcastId),
-          eq(episode.userId, session.user.id)
-        )
-      )
-      .orderBy(desc(episode.createdAt));
+    const episodes = await EpisodeService.getEpisodesForPodcast(podcastId, session.user.id);
 
     // Generate temporary SAS URLs
     const mappedEpisodes = episodes.map((ep) => {
@@ -114,12 +98,7 @@ export async function POST(
     }
 
     // Verify ownership
-    const podcastRecord = await db.query.podcast.findFirst({
-      where: and(
-        eq(podcast.id, podcastId),
-        eq(podcast.userId, session.user.id)
-      ),
-    });
+    const podcastRecord = await PodcastService.verifyOwnership(podcastId, session.user.id);
 
     if (!podcastRecord) {
       return NextResponse.json(
@@ -128,43 +107,19 @@ export async function POST(
       );
     }
 
-    // Create Episode record in draft status
-    const [newEpisode] = await db
-      .insert(episode)
-      .values({
-        podcastId,
-        userId: session.user.id,
-        title,
-        description,
-        audioUrl,
-        mimeType,
-        fileSizeBytes,
-        status: "processing",
-      })
-      .returning();
-
-    // Create Job record
-    const [newJob] = await db
-      .insert(job)
-      .values({
-        episodeId: newEpisode.id,
-        userId: session.user.id,
-        type: "full_pipeline",
-        status: "pending",
-        progress: 0,
-      })
-      .returning();
-
-    // Enqueue BullMQ job
-    await podcastProcessingQueue.add("process-episode", {
-      episodeId: newEpisode.id,
-      jobId: newJob.id,
-      audioUrl: audioUrl,
+    // Create Episode record and Job, then enqueue
+    const { episode, job } = await EpisodeService.createDraftEpisodeAndEnqueue({
+      podcastId,
       userId: session.user.id,
+      title,
+      description,
+      audioUrl,
+      mimeType,
+      fileSizeBytes,
     });
 
     return NextResponse.json(
-      { episode: newEpisode, job: newJob },
+      { episode, job },
       { status: 201 }
     );
   } catch (error) {

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const securityHeaders = [
   {
@@ -24,8 +25,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  turbopack: {
-    root: __dirname,
+  serverExternalPackages: ['@valkey/valkey-glide'],
+  webpack: (config) => {
+    config.resolve.alias["@podcasts/shared"] = path.resolve(
+      __dirname,
+      "../shared/dist/index.js"
+    );
+    return config;
   },
   images: {
     dangerouslyAllowSVG: true,
