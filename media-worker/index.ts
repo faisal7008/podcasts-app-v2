@@ -1,13 +1,13 @@
 import "dotenv/config";
 import { Worker, Queue, Job } from "bullmq";
-import { QueueNames } from "@podcasts/shared";
+import { QueueNames, StoragePaths } from "@podcasts/shared";
 import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
 import pino from "pino";
 import { db, pool, episode, job as jobSchema } from "./db";
 import { eq } from "drizzle-orm";
-import { downloadBlob, uploadBlob, extractBlobNameFromUrl } from "./storage";
+import { storageProvider } from "./storage";
 import { processAudio } from "./audio";
 
 // --- Structured Logger ---
@@ -41,7 +41,7 @@ const aiQueue = new Queue(QueueNames.AI_PIPELINE, {
 interface JobPayload {
   episodeId: string;
   jobId: string;
-  audioUrl: string;
+  podcastId: string;
   userId: string;
 }
 
@@ -51,7 +51,7 @@ function validateJobPayload(data: unknown): JobPayload {
 
   if (!d?.episodeId || typeof d.episodeId !== "string") missing.push("episodeId");
   if (!d?.jobId || typeof d.jobId !== "string") missing.push("jobId");
-  if (!d?.audioUrl || typeof d.audioUrl !== "string") missing.push("audioUrl");
+  if (!d?.podcastId || typeof d.podcastId !== "string") missing.push("podcastId");
   if (!d?.userId || typeof d.userId !== "string") missing.push("userId");
 
   if (missing.length > 0) {
@@ -61,7 +61,7 @@ function validateJobPayload(data: unknown): JobPayload {
   return {
     episodeId: d.episodeId as string,
     jobId: d.jobId as string,
-    audioUrl: d.audioUrl as string,
+    podcastId: d.podcastId as string,
     userId: d.userId as string,
   };
 }
@@ -81,25 +81,38 @@ async function updateJobProgress(
 // --- Main Job Processor ---
 async function processJob(job: Job) {
   const payload = validateJobPayload(job.data);
-  const { episodeId, jobId, audioUrl, userId } = payload;
+  const { episodeId, jobId, podcastId, userId } = payload;
   const log = logger.child({ jobId, episodeId });
 
   log.info("media_processing_started");
 
+  // Derive processed blob path
+  const processedBlobPath = StoragePaths.processedAudio(episodeId);
+
+  // Get raw blob path from the database (since extension varies)
+  const [episodeRecord] = await db
+    .select()
+    .from(episode)
+    .where(eq(episode.id, episodeId));
+
+  if (!episodeRecord || !episodeRecord.rawBlob) {
+    throw new Error(`Episode ${episodeId} not found or has no rawBlob`);
+  }
+
+  const rawBlobPath = episodeRecord.rawBlob;
+  const ext = rawBlobPath.split(".").pop() || "webm";
+
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "podcast-"));
-  const inputPath = path.join(tempDir, "input.webm");
+  const inputPath = path.join(tempDir, `input.${ext}`);
   const outputPath = path.join(tempDir, "output.m4a");
 
   try {
     await updateJobProgress(jobId, 10);
     await job.updateProgress(10);
 
-    // 1. Download audio
-    const blobName = extractBlobNameFromUrl(audioUrl);
-    if (!blobName) throw new Error(`Invalid audio URL format: ${audioUrl}`);
-
-    log.info({ blobName }, "downloading_blob");
-    await downloadBlob(blobName, inputPath);
+    // 1. Download audio using blob path (not URL)
+    log.info({ blobPath: rawBlobPath }, "downloading_blob");
+    await storageProvider.downloadToFile(rawBlobPath, inputPath);
     await updateJobProgress(jobId, 30);
     await job.updateProgress(30);
 
@@ -113,19 +126,24 @@ async function processJob(job: Job) {
     await updateJobProgress(jobId, 70);
     await job.updateProgress(70);
 
-    // 4. Upload processed audio back to Azure
-    const newBlobName = `processed/${episodeId}.m4a`;
-    log.info({ newBlobName }, "uploading_processed_audio");
-    const newUrl = await uploadBlob(outputPath, newBlobName, "audio/m4a");
+    // 4. Upload processed audio to deterministic path
+    log.info({ blobPath: processedBlobPath }, "uploading_processed_audio");
+    await storageProvider.uploadFile(outputPath, processedBlobPath, "audio/m4a", {
+      episodeId,
+      podcastId,
+      userId,
+      source: "media-worker",
+      uploadedAt: new Date().toISOString(),
+    });
 
     const stats = fs.statSync(outputPath);
 
-    // 5. Update Database
+    // 5. Update Database — store blob path, not URL
     log.info("updating_database");
     await db
       .update(episode)
       .set({
-        audioUrl: newUrl,
+        processedBlob: processedBlobPath,
         fileSizeBytes: stats.size,
         mimeType: "audio/m4a",
         updatedAt: new Date(),
@@ -137,13 +155,13 @@ async function processJob(job: Job) {
 
     log.info("media_processing_completed");
 
-    // Enqueue for AI Worker via BullMQ
+    // Enqueue for AI Worker via BullMQ — only episodeId, no URLs
     log.info("enqueuing_ai_job");
     await aiQueue.add("process-ai", {
       jobId,
       episodeId,
+      podcastId,
       userId,
-      audioUrl: newUrl,
     });
   } catch (error) {
     const errorMessage =
@@ -154,6 +172,11 @@ async function processJob(job: Job) {
       .update(jobSchema)
       .set({ status: "failed", error: errorMessage, updatedAt: new Date() })
       .where(eq(jobSchema.id, jobId));
+
+    await db
+      .update(episode)
+      .set({ status: "failed", updatedAt: new Date() })
+      .where(eq(episode.id, episodeId));
 
     throw error;
   } finally {

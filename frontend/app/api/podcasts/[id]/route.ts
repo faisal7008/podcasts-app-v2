@@ -3,7 +3,7 @@ import { getPodcastById } from "@/lib/taddy";
 import { db } from "@/lib/db";
 import { podcast, episode } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { extractBlobNameFromUrl, generateReadSasUrl } from "@/lib/storage";
+import { storageService } from "@/lib/storage";
 
 export async function GET(
   request: Request,
@@ -36,8 +36,11 @@ export async function GET(
       };
 
       const mappedEpisodes = localEpisodes.map((ep) => {
-        const blobName = extractBlobNameFromUrl(ep.audioUrl);
-        const audioSrc = blobName ? generateReadSasUrl(blobName) : ep.audioUrl;
+        // Use processedBlob if available, otherwise rawBlob
+        const audioBlobPath = ep.processedBlob || ep.rawBlob;
+        const audioSrc = audioBlobPath
+          ? storageService.generateReadUrl(audioBlobPath)
+          : null;
 
         return {
           id: ep.id,

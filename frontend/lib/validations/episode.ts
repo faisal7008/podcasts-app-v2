@@ -52,9 +52,9 @@ export const createEpisodeSchema = z.object({
   podcastId: z
     .string()
     .uuid("Invalid podcast ID"),
-  audioUrl: z
+  rawBlob: z
     .string()
-    .url("Invalid audio URL"),
+    .min(1, "Blob path is required"),
   duration: z
     .number()
     .int()

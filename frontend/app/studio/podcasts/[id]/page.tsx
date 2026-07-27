@@ -60,7 +60,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-import { Play, MoreVertical, Pencil, Trash, X, Save } from "lucide-react";
+import { Play, MoreVertical, Pencil, Trash, X, Save, RefreshCw } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { usePlayer } from "@/components/player/player-provider";
 import { toast } from "sonner";
@@ -71,7 +71,7 @@ function StudioEpisodeCard({ ep, podcast }: { ep: StudioEpisode, podcast: Studio
   const [editTitle, setEditTitle] = useState(ep.title);
   const [isSaving, setIsSaving] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
-  
+
   const menuRef = useRef<HTMLDivElement>(null);
   const player = usePlayer();
   const queryClient = useQueryClient();
@@ -137,6 +137,19 @@ function StudioEpisodeCard({ ep, podcast }: { ep: StudioEpisode, podcast: Studio
       queryClient.invalidateQueries({ queryKey: ["studio-podcast-episodes", podcast.id] });
     } catch (err) {
       toast.error("Failed to delete episode");
+    }
+  };
+
+  const handleRetry = async () => {
+    try {
+      const res = await fetch(`/api/studio/podcasts/${podcast.id}/episodes/${ep.id}/retry`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("Failed to retry processing");
+      toast.success("Retry started");
+      queryClient.invalidateQueries({ queryKey: ["studio-podcast-episodes", podcast.id] });
+    } catch (err) {
+      toast.error("Failed to start retry");
     }
   };
 
@@ -240,6 +253,15 @@ function StudioEpisodeCard({ ep, podcast }: { ep: StudioEpisode, podcast: Studio
               <Pencil size={14} />
               Edit Title
             </button>
+            {ep.status !== "ready" && ep.status !== "published" && (
+              <button
+                onClick={() => { handleRetry(); setShowMenu(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-text-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                <RefreshCw size={14} />
+                Retry Processing
+              </button>
+            )}
             <button
               onClick={() => { handleDelete(); setShowMenu(false); }}
               className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
@@ -286,7 +308,7 @@ function PodcastDashboardContent() {
 
       <main className="flex-1 w-full">
         <div className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] py-8">
-          
+
           <Link
             href="/studio"
             className="inline-flex items-center gap-2 text-[13px] font-bold text-text-muted hover:text-text-dark transition-colors mb-6"

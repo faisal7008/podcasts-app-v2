@@ -61,6 +61,18 @@ class DatabaseService:
                 (error, job_id),
             )
 
+    def update_episode_failed(self, episode_id: str):
+        """Mark an episode as failed."""
+        with self._pool.connection() as conn:
+            conn.execute(
+                """
+                UPDATE "Episode"
+                SET status = 'failed', "updatedAt" = NOW()
+                WHERE id = %s
+                """,
+                (episode_id,),
+            )
+
     def save_episode_ai_results(
         self,
         episode_id: str,
@@ -121,21 +133,15 @@ class StorageService:
         self._container_name = container_name
         logger.info("storage_service_initialized", container=container_name)
 
-    def download_blob(self, blob_url: str, dest_path: str):
-        """Download a blob from Azure Storage to a local file."""
-        try:
-            path = urlparse(blob_url).path
-            blob_name = path.split(f"/{self._container_name}/")[-1]
-        except Exception:
-            blob_name = blob_url.split("/")[-1]
-
+    def download_blob(self, blob_path: str, dest_path: str):
+        """Download a blob from Azure Storage to a local file using a blob path (not URL)."""
         blob_client = self._blob_service_client.get_blob_client(
-            container=self._container_name, blob=blob_name
+            container=self._container_name, blob=blob_path
         )
         with open(dest_path, "wb") as f:
             f.write(blob_client.download_blob().readall())
 
-        logger.info("blob_downloaded", blob_name=blob_name, dest=dest_path)
+        logger.info("blob_downloaded", blob_path=blob_path, dest=dest_path)
 
 
 class AIService:

@@ -8,7 +8,7 @@ export class EpisodeService {
    * Fetch all episodes for a specific podcast that belongs to the user
    */
   static async getEpisodesForPodcast(podcastId: string, userId: string) {
-    return await db
+    const episodes = await db
       .select()
       .from(episode)
       .where(
@@ -18,6 +18,29 @@ export class EpisodeService {
         )
       )
       .orderBy(desc(episode.createdAt));
+
+    // Auto-heal stuck episodes (where episode is processing but the latest job failed)
+    const processingEpisodes = episodes.filter(ep => 
+      ep.status === 'processing' || ep.status === 'processing_ai' || ep.status === 'uploading'
+    );
+    
+    for (const ep of processingEpisodes) {
+      // Find the latest job for this episode
+      const [latestJob] = await db
+        .select()
+        .from(job)
+        .where(eq(job.episodeId, ep.id))
+        .orderBy(desc(job.createdAt))
+        .limit(1);
+        
+      if (latestJob && latestJob.status === 'failed') {
+        // Heal it
+        await db.update(episode).set({ status: 'failed' }).where(eq(episode.id, ep.id));
+        ep.status = 'failed';
+      }
+    }
+
+    return episodes;
   }
 
   /**
@@ -52,7 +75,8 @@ export class EpisodeService {
       podcastId: ep.podcastId,
       podcastTitle: row.podcastTitle || "",
       artwork: ep.artwork || "",
-      audioSrc: ep.audioUrl,
+      rawBlob: ep.rawBlob,
+      processedBlob: ep.processedBlob,
       // AI fields
       transcript: ep.transcript,
       aiSummary: ep.aiSummary,
@@ -64,34 +88,41 @@ export class EpisodeService {
   }
 
   /**
-   * Create a new draft episode, a tracking job, and enqueue it for processing
+   * Create a new draft episode, a tracking job, and enqueue it for processing.
+   *
+   * The blob path (not URL) is stored in the database.
+   * The queue message only carries episodeId — workers derive paths from StoragePaths.
    */
   static async createDraftEpisodeAndEnqueue({
     podcastId,
     userId,
     title,
     description,
-    audioUrl,
+    rawBlob,
     mimeType,
     fileSizeBytes,
+    episodeId,
   }: {
     podcastId: string;
     userId: string;
     title: string;
     description: string;
-    audioUrl: string;
+    rawBlob: string;
     mimeType: string;
     fileSizeBytes: number;
+    /** Pre-generated episode ID (from the SAS URL flow) */
+    episodeId?: string;
   }) {
-    // 1. Create Episode record in draft status
+    // 1. Create Episode record in processing status
     const [newEpisode] = await db
       .insert(episode)
       .values({
+        ...(episodeId ? { id: episodeId } : {}),
         podcastId,
         userId,
         title,
         description,
-        audioUrl,
+        rawBlob,
         mimeType,
         fileSizeBytes,
         status: "processing",
@@ -110,12 +141,12 @@ export class EpisodeService {
       })
       .returning();
 
-    // 3. Enqueue BullMQ job
+    // 3. Enqueue BullMQ job — only episodeId, workers derive paths
     await podcastProcessingQueue.add("process-episode", {
       episodeId: newEpisode.id,
       jobId: newJob.id,
-      audioUrl: audioUrl,
-      userId: userId,
+      podcastId,
+      userId,
     });
 
     return { episode: newEpisode, job: newJob };

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { uploadRequestSchema } from "@/lib/validations/episode";
-import { generateSasUrl, generateBlobName } from "@/lib/storage";
+import { storageService } from "@/lib/storage";
+import { StoragePaths } from "@podcasts/shared";
 
 /**
  * POST /api/upload/sas-url — Generate a signed Azure Blob Storage URL.
@@ -10,8 +11,8 @@ import { generateSasUrl, generateBlobName } from "@/lib/storage";
  * The browser will use this URL to upload audio directly to Azure,
  * bypassing the Next.js server for large file transfers.
  *
- * Request body: { fileName: string, mimeType: string, fileSizeBytes?: number }
- * Response: { sasUrl: string, blobName: string, publicUrl: string }
+ * Request body: { fileName: string, mimeType: string, fileSizeBytes?: number, episodeId?: string }
+ * Response: { sasUrl: string, blobPath: string }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -30,11 +31,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { fileName, mimeType } = parsed.data;
-    const blobName = generateBlobName(session.user.id, fileName);
-    const { sasUrl, publicUrl } = generateSasUrl(blobName, mimeType);
+    const { mimeType } = parsed.data;
 
-    return NextResponse.json({ sasUrl, blobName, publicUrl });
+    // Generate a temporary episode ID for the upload path.
+    // This will be replaced by the real episode ID when the episode is created,
+    // OR the caller can pass an episodeId if they've already created the episode record.
+    const episodeId = body.episodeId || crypto.randomUUID();
+
+    const { sasUrl, blobPath } = storageService.generateEpisodeUploadUrl(
+      episodeId,
+      mimeType
+    );
+
+    return NextResponse.json({ sasUrl, blobPath, episodeId });
   } catch (error) {
     console.error("[API] Upload SAS URL error:", error);
     return NextResponse.json(

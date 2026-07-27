@@ -5,7 +5,7 @@ import { episode, podcast } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { deleteBlob, extractBlobNameFromUrl } from "@/lib/storage";
+import { storageService } from "@/lib/storage";
 
 const updateEpisodeSchema = z.object({
   title: z.string().min(1, "Title is required").max(255),
@@ -85,7 +85,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized or podcast not found" }, { status: 403 });
     }
 
-    // Delete episode (cascade delete will handle related jobs if configured, or delete directly)
+    // Delete episode (cascade delete will handle related jobs)
     const [deletedEpisode] = await db
       .delete(episode)
       .where(and(eq(episode.id, episodeId), eq(episode.podcastId, podcastId)))
@@ -95,12 +95,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Episode not found" }, { status: 404 });
     }
 
-    // Attempt to delete blob storage artifacts
+    // Delete ALL blob storage artifacts under the episode prefix.
+    // This removes raw audio, processed audio, transcripts, AI data, artwork — everything.
     try {
-      if (deletedEpisode.audioUrl) {
-        const audioBlobName = extractBlobNameFromUrl(deletedEpisode.audioUrl);
-        if (audioBlobName) await deleteBlob(audioBlobName);
-      }
+      const deletedCount = await storageService.deleteEpisodeAssets(episodeId);
+      console.log(`[API] Deleted ${deletedCount} blobs for episode ${episodeId}`);
     } catch (cleanupError) {
       console.error("[API] Failed to clean up blobs for deleted episode:", cleanupError);
       // We don't fail the deletion if cleanup fails, but we log it

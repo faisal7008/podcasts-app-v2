@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import {
-  extractBlobNameFromUrl,
-  generateReadSasUrl,
-} from "@/lib/storage";
+import { storageService } from "@/lib/storage";
 import { PodcastService } from "@/services/podcast.service";
 import { EpisodeService } from "@/services/episode.service";
 
@@ -43,15 +40,16 @@ export async function GET(
     // Fetch episodes
     const episodes = await EpisodeService.getEpisodesForPodcast(podcastId, session.user.id);
 
-    // Generate temporary SAS URLs
+    // Generate temporary read SAS URLs from blob paths
     const mappedEpisodes = episodes.map((ep) => {
-      const blobName = extractBlobNameFromUrl(ep.audioUrl);
+      // Use processedBlob if available, otherwise rawBlob
+      const audioBlobPath = ep.processedBlob || ep.rawBlob;
 
       return {
         ...ep,
-        audioUrl: blobName
-          ? generateReadSasUrl(blobName)
-          : ep.audioUrl,
+        audioUrl: audioBlobPath
+          ? storageService.generateReadUrl(audioBlobPath)
+          : null,
       };
     });
 
@@ -88,11 +86,11 @@ export async function POST(
 
     const { id: podcastId } = await params;
     const body = await request.json();
-    const { title, description, audioUrl, mimeType, fileSizeBytes } = body;
+    const { title, description, rawBlob, mimeType, fileSizeBytes, episodeId } = body;
 
-    if (!title || !audioUrl) {
+    if (!title || !rawBlob) {
       return NextResponse.json(
-        { error: "Title and audioUrl are required" },
+        { error: "Title and rawBlob are required" },
         { status: 400 }
       );
     }
@@ -113,9 +111,10 @@ export async function POST(
       userId: session.user.id,
       title,
       description,
-      audioUrl,
+      rawBlob,
       mimeType,
       fileSizeBytes,
+      episodeId,
     });
 
     return NextResponse.json(

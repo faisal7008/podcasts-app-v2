@@ -1,15 +1,14 @@
-import { StorageProvider } from "@podcasts/shared";
+import { StorageProvider, StorageService } from "@podcasts/shared";
 
-export const storage = new StorageProvider(
-  process.env.AZURE_STORAGE_ACCOUNT_NAME!,
-  process.env.AZURE_STORAGE_ACCOUNT_KEY!,
-  undefined,
-  process.env.AZURE_STORAGE_CONTAINER_NAME || "podcasts"
-);
+// Initialize the low-level provider
+const provider = new StorageProvider({
+  accountName: process.env.AZURE_STORAGE_ACCOUNT_NAME!,
+  accountKey: process.env.AZURE_STORAGE_ACCOUNT_KEY!,
+  containerName: process.env.AZURE_STORAGE_CONTAINER_NAME || "podcasts",
+});
 
-export const generateSasUrl = storage.generateSasUrl.bind(storage);
-export const generateReadSasUrl = storage.generateReadSasUrl.bind(storage);
-export const extractBlobNameFromUrl = storage.extractBlobNameFromUrl.bind(storage);
-export const getPublicUrl = storage.getPublicUrl.bind(storage);
-export const deleteBlob = storage.deleteBlob.bind(storage);
-export const generateBlobName = StorageProvider.generateBlobName;
+// Application-level storage service (used by API routes)
+export const storageService = new StorageService(provider);
+
+// Re-export provider for any low-level needs
+export const storageProvider = provider;

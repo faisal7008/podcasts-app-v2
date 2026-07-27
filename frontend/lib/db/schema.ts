@@ -123,7 +123,9 @@ export const episode = pgTable("Episode", {
   datePublished: timestamp("datePublished").notNull().$defaultFn(() => new Date()),
   artwork: text("artwork"),
   duration: integer("duration").default(0),
-  audioUrl: text("audioUrl").notNull(),
+  rawBlob: text("rawBlob").notNull(),             // e.g. "episodes/{id}/raw/audio.webm"
+  processedBlob: text("processedBlob"),             // e.g. "episodes/{id}/processed/audio.m4a"
+  transcriptBlob: text("transcriptBlob"),           // e.g. "episodes/{id}/transcripts/transcript.json"
   fileSizeBytes: integer("fileSizeBytes").default(0),
   mimeType: text("mimeType"),
   status: text("status").notNull().default("draft"),

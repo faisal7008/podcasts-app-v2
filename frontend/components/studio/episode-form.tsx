@@ -53,9 +53,9 @@ export function EpisodeForm({
     try {
       // Step 1: Upload audio to Azure Blob Storage
       const displayName = fileName || (audioFile instanceof File ? audioFile.name : `recording-${Date.now()}.webm`);
-      const publicUrl = await uploadAudio(audioFile, displayName);
+      const result = await uploadAudio(audioFile, displayName);
 
-      if (!publicUrl) {
+      if (!result) {
         setFormError("Upload failed. Please try again.");
         return;
       }
@@ -70,7 +70,8 @@ export function EpisodeForm({
           podcastId,
           title: title.trim(),
           description: description.trim() || undefined,
-          audioUrl: publicUrl,
+          rawBlob: result.blobPath,
+          episodeId: result.episodeId,
           duration: durationSeconds,
           fileSizeBytes: audioFile.size,
           mimeType: audioFile.type || "audio/webm",

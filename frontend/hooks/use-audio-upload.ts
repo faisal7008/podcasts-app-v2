@@ -9,14 +9,14 @@ export interface AudioUploadState {
   progress: number;
   /** Error message if upload failed */
   error: string | null;
-  /** The public URL of the uploaded audio (available after success) */
-  uploadedUrl: string | null;
-  /** The blob name in Azure storage */
-  blobName: string | null;
+  /** The blob path in Azure storage (available after success) */
+  blobPath: string | null;
+  /** The episode ID used for the upload path */
+  episodeId: string | null;
 }
 
 export interface AudioUploadActions {
-  uploadAudio: (file: File | Blob, fileName?: string) => Promise<string | null>;
+  uploadAudio: (file: File | Blob, fileName?: string) => Promise<{ blobPath: string; episodeId: string } | null>;
   resetUpload: () => void;
 }
 
@@ -26,39 +26,39 @@ export type UseAudioUploadReturn = AudioUploadState & AudioUploadActions;
  * React hook for uploading audio to Azure Blob Storage via SAS URL.
  *
  * Flow:
- * 1. Request a SAS URL from /api/upload/sas-url
+ * 1. Request a SAS URL + blob path from /api/upload/sas-url
  * 2. Upload the file directly to Azure using XHR (for progress tracking)
- * 3. Return the public URL for the uploaded blob
+ * 3. Return the blob path (stored in DB) and episodeId
  */
 export function useAudioUpload(): UseAudioUploadReturn {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
-  const [blobName, setBlobName] = useState<string | null>(null);
+  const [blobPath, setBlobPath] = useState<string | null>(null);
+  const [episodeId, setEpisodeId] = useState<string | null>(null);
 
   const resetUpload = useCallback(() => {
     setIsUploading(false);
     setProgress(0);
     setError(null);
-    setUploadedUrl(null);
-    setBlobName(null);
+    setBlobPath(null);
+    setEpisodeId(null);
   }, []);
 
   const uploadAudio = useCallback(
-    async (file: File | Blob, fileName?: string): Promise<string | null> => {
+    async (file: File | Blob, fileName?: string): Promise<{ blobPath: string; episodeId: string } | null> => {
       try {
         setIsUploading(true);
         setProgress(0);
         setError(null);
-        setUploadedUrl(null);
-        setBlobName(null);
+        setBlobPath(null);
+        setEpisodeId(null);
 
         // Determine file name and mime type
         const name = fileName || (file instanceof File ? file.name : `recording-${Date.now()}.webm`);
         const mimeType = file.type || "audio/webm";
 
-        // Step 1: Get SAS URL from our API
+        // Step 1: Get SAS URL + blob path from our API
         const sasResponse = await fetch("/api/upload/sas-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -74,7 +74,11 @@ export function useAudioUpload(): UseAudioUploadReturn {
           throw new Error(sasError.error || "Failed to get upload URL");
         }
 
-        const { sasUrl, publicUrl, blobName: uploadedBlobName } = await sasResponse.json();
+        const {
+          sasUrl,
+          blobPath: uploadedBlobPath,
+          episodeId: uploadEpisodeId,
+        } = await sasResponse.json();
 
         // Step 2: Upload directly to Azure Blob Storage using XHR (for progress)
         await new Promise<void>((resolve, reject) => {
@@ -109,13 +113,13 @@ export function useAudioUpload(): UseAudioUploadReturn {
           xhr.send(file);
         });
 
-        // Step 3: Success
-        setUploadedUrl(publicUrl);
-        setBlobName(uploadedBlobName);
+        // Step 3: Success — return blob path (not URL)
+        setBlobPath(uploadedBlobPath);
+        setEpisodeId(uploadEpisodeId);
         setProgress(100);
         setIsUploading(false);
 
-        return publicUrl;
+        return { blobPath: uploadedBlobPath, episodeId: uploadEpisodeId };
       } catch (err) {
         const message = err instanceof Error ? err.message : "Upload failed";
         setError(message);
@@ -131,8 +135,8 @@ export function useAudioUpload(): UseAudioUploadReturn {
     isUploading,
     progress,
     error,
-    uploadedUrl,
-    blobName,
+    blobPath,
+    episodeId,
     uploadAudio,
     resetUpload,
   };

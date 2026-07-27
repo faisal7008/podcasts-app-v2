@@ -26,6 +26,7 @@ load_dotenv(override=True)
 
 from config import load_settings, Settings
 from services import DatabaseService, StorageService, AIService
+from storage_paths import StoragePaths
 
 # --- Structured logging setup ---
 structlog.configure(
@@ -52,7 +53,7 @@ ai_service: AIService = None  # type: ignore
 
 def validate_job_data(data: Dict[str, Any]) -> Dict[str, str]:
     """Validate incoming job payload. Raises ValueError on invalid data."""
-    required_fields = ["jobId", "episodeId", "audioUrl"]
+    required_fields = ["jobId", "episodeId"]
     missing = [f for f in required_fields if not data.get(f)]
     if missing:
         raise ValueError(f"Missing required fields: {', '.join(missing)}")
@@ -60,7 +61,6 @@ def validate_job_data(data: Dict[str, Any]) -> Dict[str, str]:
     return {
         "job_id": data["jobId"],
         "episode_id": data["episodeId"],
-        "audio_url": data["audioUrl"],
         "user_id": data.get("userId", "unknown"),
     }
 
@@ -77,7 +77,9 @@ async def process_ai_job(job, token):
 
     job_id = validated["job_id"]
     episode_id = validated["episode_id"]
-    audio_url = validated["audio_url"]
+
+    # Derive blob path from episodeId using StoragePaths
+    processed_blob_path = StoragePaths.processed_audio(episode_id)
 
     log = logger.bind(job_id=job_id, episode_id=episode_id)
     log.info("job_started")
@@ -89,10 +91,10 @@ async def process_ai_job(job, token):
         db_service.update_job_progress(job_id, 75, "processing_ai")
         await job.updateProgress(75)
 
-        # 1. Download audio
-        log.info("downloading_audio")
+        # 1. Download processed audio using blob path (not URL)
+        log.info("downloading_audio", blob_path=processed_blob_path)
         audio_path = os.path.join(temp_dir, "audio.m4a")
-        await asyncio.to_thread(storage_service.download_blob, audio_url, audio_path)
+        await asyncio.to_thread(storage_service.download_blob, processed_blob_path, audio_path)
 
         # 2. Transcribe with Whisper
         log.info("transcribing_audio")
@@ -129,6 +131,7 @@ async def process_ai_job(job, token):
     except Exception as e:
         log.error("job_failed", error=str(e))
         db_service.update_job_failed(job_id, str(e))
+        db_service.update_episode_failed(episode_id)
         raise
 
     finally:
