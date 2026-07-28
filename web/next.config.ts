@@ -25,15 +25,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  transpilePackages: ['@podcasts/shared'],
   serverExternalPackages: ['@valkey/valkey-glide'],
-  webpack: (config) => {
-    config.resolve.alias["@podcasts/shared"] = path.resolve(
-      __dirname,
-      "../shared/dist/index.js"
-    );
-    return config;
+  turbopack: {
+    root: path.join(__dirname, '..'),
   },
-  turbopack: {},
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",

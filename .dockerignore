@@ -7,3 +7,11 @@ __pycache__
 *.pyc
 .venv
 venv
+.git
+.github
+*.log
+coverage
+build
+.idea
+.vscode
+.dockerignore

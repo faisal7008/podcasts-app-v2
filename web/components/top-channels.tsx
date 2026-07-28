@@ -38,8 +38,8 @@ export function TopChannels({ channels, className }: TopChannelsProps) {
               alt={`${channel.name} artwork`}
               fill
               className="object-cover"
-              loading="lazy"
               sizes="48px"
+              loading="eager"
             />
           </div>
 
