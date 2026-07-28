@@ -55,7 +55,7 @@ Ensure you have the following installed on your local machine:
 1. **Clone the repository:**
    ```bash
    git clone <repo-url>
-   cd podcasts-app-v2/frontend
+   cd podcasts-app-v2/web
    ```
 
 2. **Install dependencies:**
@@ -106,7 +106,7 @@ Ensure you have the following installed on your local machine:
 ## 📂 Project Structure
 
 ```text
-frontend/
+web/
 ├── app/                  # Next.js App Router pages and API route handlers
 ├── components/           # Reusable React components (UI, layout, player, studio)
 ├── drizzle/              # Drizzle ORM database migrations

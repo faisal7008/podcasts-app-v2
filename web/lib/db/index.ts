@@ -4,10 +4,10 @@ import * as schema from "./schema";
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL?.replace("?sslmode=require", ""),
-  ssl: process.env.NODE_ENV === "production" 
-    ? (process.env.DATABASE_CA_CERT 
-        ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT } 
-        : { rejectUnauthorized: false }) 
+  ssl: process.env.NODE_ENV === "production"
+    ? (process.env.DATABASE_CA_CERT
+      ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT }
+      : { rejectUnauthorized: false })
     : { rejectUnauthorized: false },
 };
 
