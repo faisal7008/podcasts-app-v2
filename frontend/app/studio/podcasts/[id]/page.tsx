@@ -280,7 +280,7 @@ function PodcastDashboardContent() {
   const params = useParams();
   const podcastId = params.id as string;
 
-  const { data, isLoading } = useQuery<{ podcast: StudioPodcast, episodes: StudioEpisode[] }>({
+  const { data, isLoading, isFetching } = useQuery<{ podcast: StudioPodcast, episodes: StudioEpisode[] }>({
     queryKey: ["studio-podcast-episodes", podcastId],
     queryFn: () => fetcher(`/api/studio/podcasts/${podcastId}/episodes`),
     refetchInterval: (query) => {
@@ -370,9 +370,12 @@ function PodcastDashboardContent() {
 
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-subtitle-bold text-text-dark">Episodes</h2>
-                <span className="text-[13px] font-bold text-text-muted bg-gray-100 dark:bg-surface-dark px-2.5 py-0.5 rounded-full">
-                  {episodes.length} Total
-                </span>
+                <div className="flex items-center gap-3">
+                  {isFetching && <Loader2 size={16} className="animate-spin text-text-muted" />}
+                  <span className="text-[13px] font-bold text-text-muted bg-gray-100 dark:bg-surface-dark px-2.5 py-0.5 rounded-full">
+                    {episodes.length} Total
+                  </span>
+                </div>
               </div>
 
               {episodes.length === 0 ? (

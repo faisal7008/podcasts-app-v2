@@ -4,7 +4,11 @@ import * as schema from "./schema";
 
 const poolConfig = {
   connectionString: process.env.DATABASE_URL?.replace("?sslmode=require", ""),
-  ssl: process.env.NODE_ENV === "production" ? (process.env.DATABASE_CA_CERT ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT } : true) : { rejectUnauthorized: false },
+  ssl: process.env.NODE_ENV === "production" 
+    ? (process.env.DATABASE_CA_CERT 
+        ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT } 
+        : { rejectUnauthorized: false }) 
+    : { rejectUnauthorized: false },
 };
 
 // Cache the database connection in development. This prevents exhausting database connections

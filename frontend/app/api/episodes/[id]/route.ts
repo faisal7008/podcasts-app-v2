@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getEpisodeById } from "@/lib/taddy";
 import { EpisodeService } from "@/services/episode.service";
 
 export async function GET(
@@ -8,15 +7,12 @@ export async function GET(
 ) {
   try {
     const resolvedParams = await params;
+    const episode = await EpisodeService.resolveEpisode(resolvedParams.id);
 
-    // Check local database first for studio-uploaded episodes
-    const localEpisode = await EpisodeService.getEpisodeById(resolvedParams.id);
-    if (localEpisode) {
-      return NextResponse.json(localEpisode);
+    if (!episode) {
+      return NextResponse.json({ error: "Episode not found" }, { status: 404 });
     }
 
-    // Fallback to Taddy API
-    const episode = await getEpisodeById(resolvedParams.id);
     return NextResponse.json(episode);
   } catch (error) {
     console.error("Get Episode API error:", error);

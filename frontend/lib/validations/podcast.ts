@@ -19,7 +19,6 @@ export const createPodcastSchema = z.object({
     .min(1, "Category is required"),
   artwork: z
     .string()
-    .url("Invalid artwork URL")
     .optional()
     .nullable(),
 });

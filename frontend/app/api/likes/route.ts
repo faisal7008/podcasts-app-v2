@@ -68,11 +68,11 @@ export async function GET(request: NextRequest) {
     const likes = await SocialService.getLikesByUser(session.user.id);
     
     if (hydrate) {
-      const { getEpisodeById } = await import("@/lib/taddy");
+      const { EpisodeService } = await import("@/services/episode.service");
       const hydrated = await Promise.all(
         likes.map(async (l) => {
           try {
-            return await getEpisodeById(l.episodeId);
+            return await EpisodeService.resolveEpisode(l.episodeId);
           } catch {
             return null;
           }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getTrendingPodcasts, getTopChannels } from "@/lib/taddy";
+import { storageService } from "@/lib/storage";
 
 import { db } from "@/lib/db";
 import { podcast, episode } from "@/lib/db/schema";
@@ -38,8 +39,13 @@ export async function GET() {
           .limit(10),
       ]);
 
+    const mappedLocalPodcasts = localPodcasts.map(podcast => ({
+      ...podcast,
+      artwork: podcast.artwork ? storageService.generateReadUrl(podcast.artwork) : null
+    }));
+
     return NextResponse.json({
-      exclusive: localPodcasts,
+      exclusive: mappedLocalPodcasts,
       featured,
       noteworthy,
       trending,

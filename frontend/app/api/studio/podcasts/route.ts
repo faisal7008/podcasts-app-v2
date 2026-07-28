@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { podcast } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
 import { headers } from "next/headers";
+import { storageService } from "@/lib/storage";
 
 /**
  * GET /api/studio/podcasts — List the authenticated user's podcasts.
@@ -21,7 +22,12 @@ export async function GET() {
       .where(eq(podcast.userId, session.user.id))
       .orderBy(desc(podcast.createdAt));
 
-    return NextResponse.json({ podcasts });
+    const mappedPodcasts = podcasts.map(p => ({
+      ...p,
+      artwork: p.artwork ? storageService.generateReadUrl(p.artwork) : null
+    }));
+
+    return NextResponse.json({ podcasts: mappedPodcasts });
   } catch (error) {
     console.error("[API] Studio Podcasts GET error:", error);
     return NextResponse.json(

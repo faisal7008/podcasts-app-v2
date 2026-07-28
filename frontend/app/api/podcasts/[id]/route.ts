@@ -30,7 +30,7 @@ export async function GET(
         title: localPodcast.title,
         author: localPodcast.author || "Unknown",
         description: localPodcast.description || "",
-        artwork: localPodcast.artwork || "",
+        artwork: localPodcast.artwork ? storageService.generateReadUrl(localPodcast.artwork) : "",
         episodeCount: localEpisodes.length,
         category: localPodcast.category || "General",
       };
@@ -51,7 +51,7 @@ export async function GET(
           duration: ep.duration || 0,
           podcastId: localPodcast.id,
           podcastTitle: localPodcast.title,
-          artwork: ep.artwork || localPodcast.artwork || "",
+          artwork: ep.artwork ? storageService.generateReadUrl(ep.artwork) : mappedPodcast.artwork,
           audioSrc: audioSrc,
         };
       });

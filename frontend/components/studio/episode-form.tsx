@@ -6,6 +6,9 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAudioUpload } from "@/hooks/use-audio-upload";
+import { useQueryClient } from "@tanstack/react-query";
+import { ImageUploader } from "./image-uploader";
+import { useImageUpload } from "@/hooks/use-image-upload";
 
 interface EpisodeFormProps {
   /** The audio blob or file ready for upload */
@@ -32,14 +35,17 @@ export function EpisodeForm({
   onBack,
 }: EpisodeFormProps) {
   const router = useRouter();
-  const { isUploading, progress, error: uploadError, uploadAudio } = useAudioUpload();
+  const queryClient = useQueryClient();
+  const { isUploading: isAudioUploading, progress: audioProgress, error: uploadError, uploadAudio } = useAudioUpload();
+  const { isUploading: isImageUploading, progress: imageProgress, error: imageUploadError, uploadImage } = useImageUpload();
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [artworkFile, setArtworkFile] = useState<File | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const isSubmitting = isUploading || isCreating;
+  const isSubmitting = isAudioUploading || isImageUploading || isCreating;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,11 +59,22 @@ export function EpisodeForm({
     try {
       // Step 1: Upload audio to Azure Blob Storage
       const displayName = fileName || (audioFile instanceof File ? audioFile.name : `recording-${Date.now()}.webm`);
-      const result = await uploadAudio(audioFile, displayName);
+      const audioResult = await uploadAudio(audioFile, displayName);
 
-      if (!result) {
-        setFormError("Upload failed. Please try again.");
+      if (!audioResult) {
+        setFormError("Audio upload failed. Please try again.");
         return;
+      }
+
+      // Step 1.5: Upload artwork if present
+      let artworkBlobPath = null;
+      if (artworkFile) {
+        const imageResult = await uploadImage(artworkFile, "episode", audioResult.episodeId);
+        if (!imageResult) {
+          setFormError("Artwork upload failed. Please try again.");
+          return;
+        }
+        artworkBlobPath = imageResult.blobPath;
       }
 
       // Step 2: Create episode in database
@@ -70,8 +87,9 @@ export function EpisodeForm({
           podcastId,
           title: title.trim(),
           description: description.trim() || undefined,
-          rawBlob: result.blobPath,
-          episodeId: result.episodeId,
+          rawBlob: audioResult.blobPath,
+          episodeId: audioResult.episodeId,
+          artwork: artworkBlobPath,
           duration: durationSeconds,
           fileSizeBytes: audioFile.size,
           mimeType: audioFile.type || "audio/webm",
@@ -84,6 +102,7 @@ export function EpisodeForm({
       }
 
       toast.success("Episode created successfully!");
+      await queryClient.invalidateQueries({ queryKey: ["studio-podcast-episodes", podcastId] });
       router.push(`/studio/podcasts/${podcastId}`);
       router.refresh();
     } catch (err) {
@@ -97,9 +116,9 @@ export function EpisodeForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {/* Error messages */}
-      {(formError || uploadError) && (
+      {(formError || uploadError || imageUploadError) && (
         <div className="rounded-[var(--radius-sm)] bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-[13px] text-red-700 dark:text-red-300">
-          {formError || uploadError}
+          {formError || uploadError || imageUploadError}
         </div>
       )}
 
@@ -184,17 +203,32 @@ export function EpisodeForm({
         </p>
       </div>
 
+      {/* Artwork */}
+      <div className="flex flex-col gap-1.5">
+        <label className="text-label text-text-muted">
+          Artwork (optional)
+        </label>
+        <ImageUploader 
+          onFileSelected={setArtworkFile} 
+          label="Episode Artwork" 
+        />
+      </div>
+
       {/* Upload progress */}
-      {isUploading && (
+      {(isAudioUploading || isImageUploading) && (
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between text-[12px]">
-            <span className="text-text-muted">Uploading audio...</span>
-            <span className="text-text-dark font-bold">{progress}%</span>
+            <span className="text-text-muted">
+              {isAudioUploading ? "Uploading audio..." : "Uploading artwork..."}
+            </span>
+            <span className="text-text-dark font-bold">
+              {isAudioUploading ? audioProgress : imageProgress}%
+            </span>
           </div>
           <div className="w-full h-2 bg-divider rounded-full overflow-hidden">
             <div
               className="h-full bg-surface-dark dark:bg-white rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
+              style={{ width: `${isAudioUploading ? audioProgress : imageProgress}%` }}
             />
           </div>
         </div>
@@ -229,7 +263,7 @@ export function EpisodeForm({
           {isSubmitting ? (
             <>
               <Loader2 size={16} className="animate-spin" />
-              {isUploading ? "Uploading..." : "Creating..."}
+              {isAudioUploading || isImageUploading ? "Uploading..." : "Creating..."}
             </>
           ) : (
             "Create Episode"

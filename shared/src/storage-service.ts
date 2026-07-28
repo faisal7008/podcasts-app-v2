@@ -51,6 +51,18 @@ export class StorageService {
     return this.provider.generateUploadSasUrl(blobPath, mimeType);
   }
 
+  /**
+   * Generate an upload SAS URL for episode artwork.
+   */
+  generateEpisodeArtworkUploadUrl(
+    episodeId: string,
+    mimeType: string
+  ): { sasUrl: string; blobPath: string } {
+    const ext = StoragePaths.extFromMime(mimeType);
+    const blobPath = StoragePaths.episodeArtwork(episodeId, ext);
+    return this.provider.generateUploadSasUrl(blobPath, mimeType);
+  }
+
   // ─── Read URL Generation ──────────────────────────────────────────────────
 
   /**

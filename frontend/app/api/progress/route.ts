@@ -65,12 +65,12 @@ export async function GET(request: NextRequest) {
     });
     
     if (hydrate) {
-      const { getEpisodeById } = await import("@/lib/taddy");
+      const { EpisodeService } = await import("@/services/episode.service");
       const hydrated = await Promise.all(
         history.map(async (h) => {
           try {
-            const ep = await getEpisodeById(h.episodeId);
-            return { ...ep, progressSeconds: h.progressSeconds };
+            const ep = await EpisodeService.resolveEpisode(h.episodeId);
+            return ep ? { ...ep, progressSeconds: h.progressSeconds } : null;
           } catch {
             return null;
           }

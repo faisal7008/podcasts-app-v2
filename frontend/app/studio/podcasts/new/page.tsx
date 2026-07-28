@@ -8,6 +8,8 @@ import { cn } from "@/lib/utils";
 import { ProtectedRoute } from "@/components/protected-route";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
+import { ImageUploader } from "@/components/studio/image-uploader";
+import { useImageUpload } from "@/hooks/use-image-upload";
 
 function NewPodcastContent() {
   const router = useRouter();
@@ -16,10 +18,13 @@ function NewPodcastContent() {
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("");
-  const [artworkUrl, setArtworkUrl] = useState("");
+  const [artworkFile, setArtworkFile] = useState<File | null>(null);
   
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isUploading: isImageUploading, progress, error: imageUploadError, uploadImage } = useImageUpload();
+  const [isCreating, setIsCreating] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const isSubmitting = isCreating || isImageUploading;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,7 +36,19 @@ function NewPodcastContent() {
     }
 
     try {
-      setIsSubmitting(true);
+      setIsCreating(true);
+
+      let artworkBlobPath = null;
+      if (artworkFile) {
+        // Generate a temporary ID or let the API generate one
+        const imageResult = await uploadImage(artworkFile, "podcast");
+        if (!imageResult) {
+          setFormError("Artwork upload failed. Please try again.");
+          setIsCreating(false);
+          return;
+        }
+        artworkBlobPath = imageResult.blobPath;
+      }
 
       const response = await fetch("/api/podcasts/create", {
         method: "POST",
@@ -41,7 +58,7 @@ function NewPodcastContent() {
           author: author.trim(),
           description: description.trim() || undefined,
           category: category.trim(),
-          artwork: artworkUrl.trim() || undefined,
+          artwork: artworkBlobPath,
         }),
       });
 
@@ -57,7 +74,7 @@ function NewPodcastContent() {
       const message = err instanceof Error ? err.message : "Something went wrong";
       setFormError(message);
     } finally {
-      setIsSubmitting(false);
+      setIsCreating(false);
     }
   };
 
@@ -84,9 +101,9 @@ function NewPodcastContent() {
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-6 animate-fade-in">
-            {formError && (
+            {(formError || imageUploadError) && (
               <div className="rounded-[var(--radius-sm)] bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-[13px] text-red-700 dark:text-red-300">
-                {formError}
+                {formError || imageUploadError}
               </div>
             )}
 
@@ -183,27 +200,32 @@ function NewPodcastContent() {
               />
             </div>
 
-            {/* Artwork URL (Temporary simple input until we add image upload) */}
+            {/* Artwork */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="podcast-artwork" className="text-label text-text-muted">
-                Artwork URL
+              <label className="text-label text-text-muted">
+                Cover Artwork (optional)
               </label>
-              <input
-                id="podcast-artwork"
-                type="url"
-                value={artworkUrl}
-                onChange={(e) => setArtworkUrl(e.target.value)}
-                placeholder="https://example.com/cover.jpg"
-                disabled={isSubmitting}
-                className={cn(
-                  "w-full px-4 py-3 rounded-[var(--radius-sm)]",
-                  "bg-bg border border-divider text-text-dark text-body",
-                  "placeholder:text-text-muted",
-                  "transition-colors focus:outline-none focus:border-text-muted",
-                  "disabled:opacity-50"
-                )}
+              <ImageUploader 
+                onFileSelected={setArtworkFile} 
+                label="Podcast Cover" 
               />
             </div>
+
+            {/* Upload progress */}
+            {isImageUploading && (
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between text-[12px]">
+                  <span className="text-text-muted">Uploading artwork...</span>
+                  <span className="text-text-dark font-bold">{progress}%</span>
+                </div>
+                <div className="w-full h-2 bg-divider rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-surface-dark dark:bg-white rounded-full transition-all duration-300"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Actions */}
             <div className="flex items-center gap-3 pt-4">
@@ -234,7 +256,7 @@ function NewPodcastContent() {
                 {isSubmitting ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    Creating...
+                    {isImageUploading ? "Uploading..." : "Creating..."}
                   </>
                 ) : (
                   "Create Podcast"

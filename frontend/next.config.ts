@@ -33,6 +33,7 @@ const nextConfig: NextConfig = {
     );
     return config;
   },
+  turbopack: {},
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",

@@ -2,8 +2,28 @@ import { db } from "@/lib/db";
 import { episode, job, podcast } from "@/lib/db/schema";
 import { and, desc, eq } from "drizzle-orm";
 import { podcastProcessingQueue } from "@/lib/queue";
+import { storageService } from "@/lib/storage";
 
 export class EpisodeService {
+  /**
+   * Resolve episode by ID from local DB (mapping SAS URLs) or fallback to Taddy API
+   */
+  static async resolveEpisode(episodeId: string) {
+    // Check local database first
+    const localEpisode = await this.getEpisodeById(episodeId);
+    if (localEpisode) {
+      const audioBlobPath = localEpisode.processedBlob || localEpisode.rawBlob;
+      return {
+        ...localEpisode,
+        artwork: localEpisode.artwork ? storageService.generateReadUrl(localEpisode.artwork) : "",
+        audioSrc: audioBlobPath ? storageService.generateReadUrl(audioBlobPath) : null,
+      };
+    }
+
+    // Fallback to Taddy API
+    const { getEpisodeById: getTaddyEpisode } = await import("@/lib/taddy");
+    return await getTaddyEpisode(episodeId);
+  }
   /**
    * Fetch all episodes for a specific podcast that belongs to the user
    */
@@ -51,6 +71,7 @@ export class EpisodeService {
       .select({
         episode: episode,
         podcastTitle: podcast.title,
+        podcastArtwork: podcast.artwork,
       })
       .from(episode)
       .leftJoin(podcast, eq(episode.podcastId, podcast.id))
@@ -74,7 +95,7 @@ export class EpisodeService {
       duration: ep.duration || 0,
       podcastId: ep.podcastId,
       podcastTitle: row.podcastTitle || "",
-      artwork: ep.artwork || "",
+      artwork: ep.artwork || row.podcastArtwork || "",
       rawBlob: ep.rawBlob,
       processedBlob: ep.processedBlob,
       // AI fields
@@ -101,6 +122,7 @@ export class EpisodeService {
     rawBlob,
     mimeType,
     fileSizeBytes,
+    artwork,
     episodeId,
   }: {
     podcastId: string;
@@ -110,6 +132,7 @@ export class EpisodeService {
     rawBlob: string;
     mimeType: string;
     fileSizeBytes: number;
+    artwork?: string | null;
     /** Pre-generated episode ID (from the SAS URL flow) */
     episodeId?: string;
   }) {
@@ -125,6 +148,7 @@ export class EpisodeService {
         rawBlob,
         mimeType,
         fileSizeBytes,
+        artwork: artwork || null,
         status: "processing",
       })
       .returning();

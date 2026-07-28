@@ -71,6 +71,7 @@ export const createEpisodeSchema = z.object({
     .string()
     .optional()
     .default("audio/mpeg"),
+  artwork: z.string().optional(),
 });
 
 export type CreateEpisodeInput = z.infer<typeof createEpisodeSchema>;

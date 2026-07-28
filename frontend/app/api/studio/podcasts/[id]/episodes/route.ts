@@ -50,11 +50,15 @@ export async function GET(
         audioUrl: audioBlobPath
           ? storageService.generateReadUrl(audioBlobPath)
           : null,
+        artwork: ep.artwork ? storageService.generateReadUrl(ep.artwork) : null,
       };
     });
 
     return NextResponse.json({
-      podcast: podcastRecord,
+      podcast: {
+        ...podcastRecord,
+        artwork: podcastRecord.artwork ? storageService.generateReadUrl(podcastRecord.artwork) : null
+      },
       episodes: mappedEpisodes,
     });
   } catch (error) {
@@ -86,7 +90,7 @@ export async function POST(
 
     const { id: podcastId } = await params;
     const body = await request.json();
-    const { title, description, rawBlob, mimeType, fileSizeBytes, episodeId } = body;
+    const { title, description, rawBlob, mimeType, fileSizeBytes, artwork, episodeId } = body;
 
     if (!title || !rawBlob) {
       return NextResponse.json(
@@ -114,6 +118,7 @@ export async function POST(
       rawBlob,
       mimeType,
       fileSizeBytes,
+      artwork,
       episodeId,
     });
 
