@@ -5,9 +5,9 @@ RUN apt-get update && apt-get install -y ffmpeg libasound2 && rm -rf /var/lib/ap
 
 WORKDIR /app
 
-COPY requirements.txt .
+COPY ai-worker/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . .
+COPY ai-worker .
 
 CMD ["python", "main.py"]
