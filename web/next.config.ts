@@ -33,11 +33,7 @@ const nextConfig: NextConfig = {
     );
     return config;
   },
-  turbopack: {
-    resolveAlias: {
-      "@podcasts/shared": path.resolve(__dirname, "../shared/dist/index.js"),
-    },
-  },
+  turbopack: {},
   images: {
     dangerouslyAllowSVG: true,
     contentDispositionType: "attachment",
