@@ -35,8 +35,8 @@ if (!process.env.DATABASE_URL) {
 }
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === "production" ? (process.env.DATABASE_CA_CERT ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT } : true) : { rejectUnauthorized: false },
+  connectionString: process.env.DATABASE_URL?.replace("?sslmode=require", ""),
+  ssl: process.env.NODE_ENV === "production" ? (process.env.DATABASE_CA_CERT ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT.replace(/\\n/g, '\n') } : { rejectUnauthorized: false }) : { rejectUnauthorized: false },
   max: 10,
   min: 2,
   idleTimeoutMillis: 30000,
