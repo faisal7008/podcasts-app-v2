@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, numeric, uniqueIndex, index, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, boolean, integer, numeric, uniqueIndex, index, jsonb, vector } from "drizzle-orm/pg-core";
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -157,3 +157,49 @@ export const job = pgTable("Job", {
   createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
   updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
 });
+
+// ─── RAG Tables ─────────────────────────────────────────────────────────
+
+/**
+ * Chunked transcript embeddings for RAG retrieval.
+ * Each episode transcript is split into overlapping chunks, each embedded
+ * with text-embedding-3-small (1536 dimensions). Cosine similarity search
+ * is performed using pgvector's HNSW index.
+ */
+export const episodeChunk = pgTable("EpisodeChunk", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  episodeId: text("episodeId").notNull().references(() => episode.id, { onDelete: "cascade" }),
+  chunkIndex: integer("chunkIndex").notNull(),
+  content: text("content").notNull(),
+  embedding: vector("embedding", { dimensions: 1536 }),
+  startOffset: integer("startOffset").notNull().default(0),
+  endOffset: integer("endOffset").notNull().default(0),
+  metadata: jsonb("metadata"),  // timestamps, speaker info, etc.
+  createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
+}, (t) => [
+  index("EpisodeChunk_episodeId_idx").on(t.episodeId),
+  index("EpisodeChunk_chunkIndex_idx").on(t.episodeId, t.chunkIndex),
+  index("EpisodeChunk_embedding_hnsw_idx").using(
+    "hnsw",
+    t.embedding.op("vector_cosine_ops"),
+  ),
+]);
+
+/**
+ * Persisted AI chat conversations.
+ * Each conversation is scoped to an optional episode (null = library-wide).
+ * Messages are stored as a JSONB array of { role, content, sources? } objects.
+ */
+export const chatConversation = pgTable("ChatConversation", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  userId: text("userId").notNull().references(() => user.id, { onDelete: "cascade" }),
+  episodeId: text("episodeId").references(() => episode.id, { onDelete: "cascade" }),
+  title: text("title"),
+  messages: jsonb("messages").notNull().default([]),
+  createdAt: timestamp("createdAt").notNull().$defaultFn(() => new Date()),
+  updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
+}, (t) => [
+  index("ChatConversation_userId_idx").on(t.userId),
+  index("ChatConversation_episodeId_idx").on(t.episodeId),
+]);
+

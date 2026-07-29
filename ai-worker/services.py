@@ -6,7 +6,9 @@ All external service clients are initialized once and reused across jobs.
 import json
 import tempfile
 import os
-from typing import Any, Dict, List, Optional
+import uuid
+import re
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 import subprocess
 import time
@@ -117,6 +119,51 @@ class DatabaseService:
                     WHERE id = %s
                     """,
                     (job_id,),
+                )
+
+    def save_episode_chunks(
+        self,
+        episode_id: str,
+        chunks: List[Dict[str, Any]],
+    ):
+        """Save chunked transcript embeddings for RAG retrieval.
+        
+        Each chunk dict has: content, embedding, chunk_index, start_offset, end_offset, metadata.
+        Old chunks for this episode are deleted first (idempotent re-processing).
+        """
+        with self._pool.connection() as conn:
+            with conn.transaction():
+                # Delete existing chunks for this episode (idempotent)
+                conn.execute(
+                    'DELETE FROM "EpisodeChunk" WHERE "episodeId" = %s',
+                    (episode_id,),
+                )
+
+                # Batch insert new chunks
+                for chunk in chunks:
+                    conn.execute(
+                        """
+                        INSERT INTO "EpisodeChunk"
+                            (id, "episodeId", "chunkIndex", content, embedding,
+                             "startOffset", "endOffset", metadata, "createdAt")
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                        """,
+                        (
+                            str(uuid.uuid4()),
+                            episode_id,
+                            chunk["chunk_index"],
+                            chunk["content"],
+                            chunk["embedding"],  # pgvector accepts list of floats
+                            chunk.get("start_offset", 0),
+                            chunk.get("end_offset", 0),
+                            json.dumps(chunk.get("metadata", {})),
+                        ),
+                    )
+
+                logger.info(
+                    "chunks_saved",
+                    episode_id=episode_id,
+                    count=len(chunks),
                 )
 
     def close(self):
@@ -355,3 +402,109 @@ class AIService:
         vector = result.data[0].embedding
         logger.info("embedding_generation_completed", dimensions=len(vector))
         return vector
+
+    def chunk_transcript(
+        self,
+        transcript: str,
+        chunk_size: int = 500,
+        chunk_overlap: int = 50,
+    ) -> List[Dict[str, Any]]:
+        """Split a transcript into overlapping token-based chunks.
+        
+        Uses whitespace tokenization (word-level) as a lightweight proxy for 
+        subword tokens. Each chunk records character offsets for tracing back 
+        to the original transcript.
+        
+        Returns a list of dicts with: content, chunk_index, start_offset, end_offset, metadata.
+        """
+        if not transcript or not transcript.strip():
+            return []
+
+        words = transcript.split()
+        chunks = []
+        chunk_index = 0
+        i = 0
+
+        while i < len(words):
+            chunk_words = words[i : i + chunk_size]
+            chunk_text = " ".join(chunk_words)
+
+            # Calculate character offsets in the original transcript
+            # Find the start of the first word of this chunk
+            start_offset = 0
+            word_count = 0
+            for ci, ch in enumerate(transcript):
+                if word_count == i:
+                    start_offset = ci
+                    break
+                if ch == ' ' or ch == '\n':
+                    if ci + 1 < len(transcript) and transcript[ci + 1] not in (' ', '\n'):
+                        word_count += 1
+
+            end_offset = min(start_offset + len(chunk_text), len(transcript))
+
+            # Extract timestamp metadata from chunk if available
+            timestamps = re.findall(r'\[(\d{2}:\d{2}(?::\d{2})?)\]', chunk_text)
+            metadata = {}
+            if timestamps:
+                metadata["first_timestamp"] = timestamps[0]
+                metadata["last_timestamp"] = timestamps[-1]
+
+            chunks.append({
+                "content": chunk_text,
+                "chunk_index": chunk_index,
+                "start_offset": start_offset,
+                "end_offset": end_offset,
+                "metadata": metadata,
+            })
+
+            chunk_index += 1
+            # Advance by (chunk_size - overlap) to create overlapping windows
+            step = max(1, chunk_size - chunk_overlap)
+            i += step
+
+        logger.info(
+            "transcript_chunked",
+            total_words=len(words),
+            chunk_count=len(chunks),
+            chunk_size=chunk_size,
+            overlap=chunk_overlap,
+        )
+        return chunks
+
+    def generate_chunk_embeddings(
+        self,
+        chunks: List[Dict[str, Any]],
+        batch_size: int = 16,
+    ) -> List[Dict[str, Any]]:
+        """Batch-generate embeddings for transcript chunks.
+        
+        Processes chunks in batches to respect API rate limits.
+        Mutates each chunk dict in-place by adding an 'embedding' key.
+        Returns the chunks list with embeddings attached.
+        """
+        logger.info("chunk_embedding_started", count=len(chunks))
+
+        for batch_start in range(0, len(chunks), batch_size):
+            batch = chunks[batch_start : batch_start + batch_size]
+            texts = [c["content"] for c in batch]
+
+            # Replace empty strings with fallback
+            texts = [t if t.strip() else "No content." for t in texts]
+
+            result = self._client.embeddings.create(
+                input=texts,
+                model=self._embedding_deployment,
+            )
+
+            for j, embedding_data in enumerate(result.data):
+                chunks[batch_start + j]["embedding"] = embedding_data.embedding
+
+            logger.debug(
+                "chunk_embedding_batch_done",
+                batch_start=batch_start,
+                batch_size=len(batch),
+            )
+
+        logger.info("chunk_embedding_completed", count=len(chunks))
+        return chunks

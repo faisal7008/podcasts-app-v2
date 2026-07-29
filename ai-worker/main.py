@@ -102,17 +102,36 @@ async def process_ai_job(job, token):
         transcript_text = await asyncio.to_thread(ai_service.transcribe, audio_path)
         await job.updateProgress(85)
 
-        # 3 & 4. Generate metadata and embeddings in parallel
+        # 3 & 4. Generate metadata and episode-level embedding in parallel
         log.info("generating_metadata_and_embeddings")
         db_service.update_job_progress(job_id, 85, "generating_ai_content")
         
         metadata_task = asyncio.to_thread(ai_service.generate_metadata, transcript_text)
         embedding_task = asyncio.to_thread(ai_service.generate_embedding, transcript_text[:15000])
         
-        metadata, _ = await asyncio.gather(metadata_task, embedding_task)
+        metadata, episode_embedding = await asyncio.gather(metadata_task, embedding_task)
+        await job.updateProgress(90)
+
+        # 5. Chunk transcript and generate chunk embeddings for RAG
+        log.info("chunking_transcript_for_rag")
+        db_service.update_job_progress(job_id, 90, "generating_rag_embeddings")
+
+        chunks = await asyncio.to_thread(
+            ai_service.chunk_transcript,
+            transcript_text,
+            settings.chunk_size,
+            settings.chunk_overlap,
+        )
+
+        if chunks:
+            chunks = await asyncio.to_thread(
+                ai_service.generate_chunk_embeddings,
+                chunks,
+                settings.embedding_batch_size,
+            )
         await job.updateProgress(96)
 
-        # 5. Save to database
+        # 6. Save to database — episode AI results + chunk embeddings
         log.info("saving_results")
         db_service.save_episode_ai_results(
             episode_id=episode_id,
@@ -125,8 +144,20 @@ async def process_ai_job(job, token):
             recommendations=metadata.get("recommendations"),
         )
 
+        # Save chunk embeddings for RAG retrieval
+        if chunks:
+            await asyncio.to_thread(
+                db_service.save_episode_chunks,
+                episode_id,
+                chunks,
+            )
+
         await job.updateProgress(100)
-        log.info("job_completed")
+        log.info(
+            "job_completed",
+            chunk_count=len(chunks),
+            embedding_dims=len(episode_embedding) if episode_embedding else 0,
+        )
 
     except Exception as e:
         log.error("job_failed", error=str(e))

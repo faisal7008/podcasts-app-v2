@@ -1,6 +1,8 @@
 "use client";
 
 import { use } from "react";
+import { Sparkles } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Header } from "@/components/header";
 import { Footer } from "@/components/footer";
 import { EpisodeHead } from "@/components/episode-head";
@@ -8,6 +10,8 @@ import { EpisodeAIContent } from "@/components/episode-ai-content";
 import { EpisodeList } from "@/components/episode-list";
 import { Divider } from "@/components/divider";
 import { usePlayer } from "@/components/player/player-provider";
+import { ChatProvider, useChat } from "@/components/ai-chat/chat-provider";
+import { ChatPanel } from "@/components/ai-chat/chat-panel";
 import { useEpisode, usePodcast } from "@/hooks/use-podcasts";
 import type { Episode } from "@/types/podcast";
 
@@ -15,6 +19,7 @@ function EpisodePageContent({ id }: { id: string }) {
   const { data: episode, isLoading, isError } = useEpisode(id);
   const { data: podcastData } = usePodcast(episode?.podcastId || "");
   const player = usePlayer();
+  const chat = useChat();
 
   if (isLoading) {
     return (
@@ -63,6 +68,16 @@ function EpisodePageContent({ id }: { id: string }) {
     player.openPlayer();
   };
 
+  const handleOpenChat = () => {
+    chat.openChat(id);
+  };
+
+  const hasAIContent =
+    episode.aiSummary ||
+    episode.transcript ||
+    episode.showNotes ||
+    (episode.chapters && episode.chapters.length > 0);
+
   return (
     <div className="flex min-h-screen flex-col">
       <Header
@@ -80,9 +95,9 @@ function EpisodePageContent({ id }: { id: string }) {
         </section>
 
         {/* AI Content */}
-        {(episode.aiSummary || episode.transcript || episode.showNotes || (episode.chapters && episode.chapters.length > 0)) && (
+        {hasAIContent && (
           <section className="mx-auto max-w-[1440px] px-4 md:px-[180px] lg:px-[271px] pt-8">
-            <EpisodeAIContent episode={episode} />
+            <EpisodeAIContent episode={episode} onOpenChat={handleOpenChat} />
           </section>
         )}
 
@@ -103,6 +118,31 @@ function EpisodePageContent({ id }: { id: string }) {
       </main>
 
       <Footer />
+
+      {/* Floating Ask AI Button */}
+      {hasAIContent && !chat.isOpen && (
+        <button
+          onClick={handleOpenChat}
+          className={cn(
+            "fixed bottom-24 right-6 z-30",
+            "flex items-center gap-2 px-5 py-3",
+            "rounded-full shadow-lg",
+            "bg-gradient-to-r from-violet-600 to-indigo-600",
+            "text-white text-[13px] font-bold",
+            "hover:shadow-xl hover:scale-105",
+            "active:scale-95",
+            "transition-all duration-200",
+            "animate-fade-in"
+          )}
+          aria-label="Open AI Chat"
+        >
+          <Sparkles size={16} />
+          Ask AI
+        </button>
+      )}
+
+      {/* Chat Panel */}
+      <ChatPanel />
     </div>
   );
 }
@@ -113,5 +153,10 @@ export default function EpisodePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  return <EpisodePageContent id={id} />;
+  return (
+    <ChatProvider>
+      <EpisodePageContent id={id} />
+    </ChatProvider>
+  );
 }
+

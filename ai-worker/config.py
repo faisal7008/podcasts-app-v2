@@ -41,6 +41,11 @@ class Settings(BaseSettings):
     # Worker Settings
     worker_concurrency: int = Field(default=3, alias="WORKER_CONCURRENCY")
 
+    # RAG / Chunking Settings
+    chunk_size: int = Field(default=500, alias="CHUNK_SIZE")
+    chunk_overlap: int = Field(default=50, alias="CHUNK_OVERLAP")
+    embedding_batch_size: int = Field(default=16, alias="EMBEDDING_BATCH_SIZE")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

@@ -95,3 +95,38 @@ export function useTopCategories() {
     staleTime: 60 * 60 * 1000,
   });
 }
+
+// ─── Semantic Search (RAG) ──────────────────────────────────────────────────
+
+export type SearchMode = "keyword" | "semantic";
+
+export interface SemanticSearchResult {
+  query: string;
+  totalResults: number;
+  episodes: {
+    episodeId: string;
+    episodeTitle: string;
+    podcastTitle: string;
+    artwork: string;
+    chunks: {
+      id: string;
+      content: string;
+      score: number;
+      timestamp: string | null;
+      preview: string;
+    }[];
+  }[];
+}
+
+export function useSemanticSearch(query: string) {
+  return useQuery({
+    queryKey: ["semantic-search", query],
+    queryFn: () =>
+      fetchJson<SemanticSearchResult>(
+        `/api/rag/search?q=${encodeURIComponent(query)}`
+      ),
+    enabled: !!query && query.trim().length >= 3,
+    staleTime: 60 * 1000,
+  });
+}
+

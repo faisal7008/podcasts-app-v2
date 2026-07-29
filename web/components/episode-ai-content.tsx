@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Episode } from "@/types/podcast";
 import { sanitizeHtml } from "@/lib/sanitize";
@@ -8,11 +9,12 @@ import { Divider } from "@/components/divider";
 
 interface EpisodeAIContentProps {
   episode: Episode;
+  onOpenChat?: () => void;
 }
 
 type Tab = "summary" | "notes" | "transcript" | "chapters";
 
-export function EpisodeAIContent({ episode }: EpisodeAIContentProps) {
+export function EpisodeAIContent({ episode, onOpenChat }: EpisodeAIContentProps) {
   const tabs: { id: Tab; label: string; content: any }[] = [];
 
   if (episode.aiSummary) tabs.push({ id: "summary", label: "AI Summary", content: episode.aiSummary });
@@ -44,6 +46,24 @@ export function EpisodeAIContent({ episode }: EpisodeAIContentProps) {
             {tab.label}
           </button>
         ))}
+
+        {/* Ask AI button */}
+        {onOpenChat && (
+          <button
+            onClick={onOpenChat}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-full",
+              "bg-gradient-to-r from-violet-600 to-indigo-600",
+              "text-white shadow-sm",
+              "hover:shadow-md hover:scale-[1.02]",
+              "active:scale-[0.98]",
+              "transition-all duration-150"
+            )}
+          >
+            <Sparkles size={14} />
+            Ask AI
+          </button>
+        )}
       </div>
       {/* Divider */}
       <Divider className="mt-2" />
@@ -102,3 +122,4 @@ function formatTime(seconds: number): string {
   if (h > 0) return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
