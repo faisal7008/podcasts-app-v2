@@ -158,6 +158,20 @@ export const job = pgTable("Job", {
   updatedAt: timestamp("updatedAt").notNull().$defaultFn(() => new Date()),
 });
 
+export const jobStep = pgTable("JobStep", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  jobId: text("jobId").notNull().references(() => job.id, { onDelete: "cascade" }),
+  stepId: text("stepId").notNull(),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("pending"),
+  error: text("error"),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+}, (t) => [
+  index("JobStep_jobId_idx").on(t.jobId),
+  uniqueIndex("JobStep_jobId_stepId_key").on(t.jobId, t.stepId)
+]);
+
 // ─── RAG Tables ─────────────────────────────────────────────────────────
 
 /**

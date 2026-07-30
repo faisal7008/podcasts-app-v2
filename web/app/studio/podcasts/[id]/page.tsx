@@ -21,6 +21,8 @@ interface StudioEpisode {
   status: string;
   createdAt: string;
   updatedAt: string;
+  latestJob?: any;
+  jobSteps?: any[];
 }
 
 interface StudioPodcast {
@@ -60,17 +62,19 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-import { Play, MoreVertical, Pencil, Trash, X, Save, RefreshCw } from "lucide-react";
+import { Play, MoreVertical, Pencil, Trash, X, Save, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { usePlayer } from "@/components/player/player-provider";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { JobStepper } from "@/components/studio/job-stepper";
 
 function StudioEpisodeCard({ ep, podcast }: { ep: StudioEpisode, podcast: StudioPodcast }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(ep.title);
   const [isSaving, setIsSaving] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
+  const [showSteps, setShowSteps] = useState(ep.status === "processing" || ep.status === "failed");
 
   const menuRef = useRef<HTMLDivElement>(null);
   const player = usePlayer();
@@ -156,122 +160,147 @@ function StudioEpisodeCard({ ep, podcast }: { ep: StudioEpisode, podcast: Studio
   return (
     <div
       className={cn(
-        "flex items-center gap-4 p-4",
+        "flex flex-col p-4 gap-2",
         "rounded-[var(--radius-md)] border border-divider",
         "transition-colors hover:bg-gray-50 dark:hover:bg-surface-dark group"
       )}
     >
-      {/* Play Button or Icon */}
-      {ep.audioUrl && (ep.status === "ready" || ep.status === "published" || ep.status === "uploaded") ? (
-        <button
-          onClick={handlePlay}
-          className={cn(
-            "flex items-center justify-center w-12 h-12 shrink-0 rounded-full",
-            "bg-accent/10 text-accent hover:bg-accent hover:text-white transition-colors cursor-pointer"
-          )}
-        >
-          <Play size={20} className="ml-1" />
-        </button>
-      ) : (
-        <div className={cn(
-          "flex items-center justify-center w-12 h-12 shrink-0 rounded-full",
-          "bg-gray-100 dark:bg-surface-dark"
-        )}>
-          <FileAudio size={20} className="text-text-muted" />
-        </div>
-      )}
-
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        {isEditing ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-              className="flex-1 bg-white dark:bg-surface-dark border border-divider rounded-[var(--radius-sm)] px-3 py-1.5 text-[14px] text-text-dark font-bold focus:outline-none focus:border-accent"
-              autoFocus
-              disabled={isSaving}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSave();
-                if (e.key === "Escape") setIsEditing(false);
-              }}
-            />
-            <button
-              onClick={handleSave}
-              disabled={isSaving || !editTitle.trim()}
-              className="p-1.5 text-accent hover:bg-accent/10 rounded-full transition-colors"
-            >
-              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            </button>
-            <button
-              onClick={() => setIsEditing(false)}
-              disabled={isSaving}
-              className="p-1.5 text-text-muted hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
-            >
-              <X size={18} />
-            </button>
-          </div>
+      <div className="flex items-center gap-4">
+        {/* Play Button or Icon */}
+        {ep.audioUrl && (ep.status === "ready" || ep.status === "published" || ep.status === "uploaded") ? (
+          <button
+            onClick={handlePlay}
+            className={cn(
+              "flex items-center justify-center w-12 h-12 shrink-0 rounded-full",
+              "bg-accent/10 text-accent hover:bg-accent hover:text-white transition-colors cursor-pointer"
+            )}
+          >
+            <Play size={20} className="ml-1" />
+          </button>
         ) : (
-          <p className="text-body font-bold text-text-dark truncate">
-            {ep.title}
-          </p>
+          <div className={cn(
+            "flex items-center justify-center w-12 h-12 shrink-0 rounded-full",
+            "bg-gray-100 dark:bg-surface-dark"
+          )}>
+            <FileAudio size={20} className="text-text-muted" />
+          </div>
         )}
-        <div className="flex items-center gap-3 mt-1">
-          <span className="text-[12px] text-text-muted">
-            {new Date(ep.createdAt).toLocaleDateString("en-US", {
-              month: "short",
-              day: "numeric",
-              year: "numeric",
-            })}
-          </span>
-          {ep.duration > 0 && (
+
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="flex-1 bg-white dark:bg-surface-dark border border-divider rounded-[var(--radius-sm)] px-3 py-1.5 text-[14px] text-text-dark font-bold focus:outline-none focus:border-accent"
+                autoFocus
+                disabled={isSaving}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleSave();
+                  if (e.key === "Escape") setIsEditing(false);
+                }}
+              />
+              <button
+                onClick={handleSave}
+                disabled={isSaving || !editTitle.trim()}
+                className="p-1.5 text-accent hover:bg-accent/10 rounded-full transition-colors"
+              >
+                {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              </button>
+              <button
+                onClick={() => setIsEditing(false)}
+                disabled={isSaving}
+                className="p-1.5 text-text-muted hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+          ) : (
+            <p className="text-body font-bold text-text-dark truncate">
+              {ep.title}
+            </p>
+          )}
+          <div className="flex items-center gap-3 mt-1">
             <span className="text-[12px] text-text-muted">
-              {formatDuration(ep.duration)}
+              {new Date(ep.createdAt).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              })}
             </span>
+            {ep.duration > 0 && (
+              <span className="text-[12px] text-text-muted">
+                {formatDuration(ep.duration)}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center gap-1">
+          <StatusBadge status={ep.status} />
+          {ep.jobSteps && ep.jobSteps.length > 0 && (
+            <button
+              onClick={() => setShowSteps(!showSteps)}
+              className="ml-1 p-1 text-text-muted hover:text-text-dark hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+            >
+              {showSteps ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
           )}
         </div>
-      </div>
 
-      {/* Status */}
-      <StatusBadge status={ep.status} />
-
-      {/* Actions */}
-      <div className="relative ml-2" ref={menuRef}>
-        <button
-          onClick={() => setShowMenu(!showMenu)}
-          className="p-2 text-text-muted hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
-        >
-          <MoreVertical size={18} />
-        </button>
-        {showMenu && (
-          <div className="absolute right-0 top-10 w-36 bg-white dark:bg-surface-dark border border-divider rounded-[var(--radius-sm)] shadow-lg z-10 py-1">
-            <button
-              onClick={() => { setIsEditing(true); setShowMenu(false); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-text-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-            >
-              <Pencil size={14} />
-              Edit Title
-            </button>
-            {ep.status !== "ready" && ep.status !== "published" && (
+        {/* Actions */}
+        <div className="relative ml-1" ref={menuRef}>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            className="p-2 text-text-muted hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors opacity-0 group-hover:opacity-100"
+          >
+            <MoreVertical size={18} />
+          </button>
+          {showMenu && (
+            <div className="absolute right-0 top-10 w-36 bg-white dark:bg-surface-dark border border-divider rounded-[var(--radius-sm)] shadow-lg z-10 py-1">
               <button
-                onClick={() => { handleRetry(); setShowMenu(false); }}
+                onClick={() => { setIsEditing(true); setShowMenu(false); }}
                 className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-text-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
-                <RefreshCw size={14} />
-                Retry Processing
+                <Pencil size={14} />
+                Edit Title
               </button>
-            )}
-            <button
-              onClick={() => { handleDelete(); setShowMenu(false); }}
-              className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
-            >
-              <Trash size={14} />
-              Delete
-            </button>
-          </div>
-        )}
+              {ep.status !== "ready" && ep.status !== "published" && (
+                <button
+                  onClick={() => { handleRetry(); setShowMenu(false); }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-text-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <RefreshCw size={14} />
+                  Retry Processing
+                </button>
+              )}
+              <button
+                onClick={() => { handleDelete(); setShowMenu(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2 text-[13px] text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+              >
+                <Trash size={14} />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+      
+      {/* Job Stepper */}
+      {showSteps && ep.jobSteps && ep.jobSteps.length > 0 && (
+        <div className="ml-16 mt-2 pt-4 border-t border-divider">
+          <h4 className="text-sm font-bold text-text-dark mb-2">Processing Pipeline</h4>
+          <JobStepper steps={ep.jobSteps} />
+          {ep.status === 'failed' && (
+             <button onClick={handleRetry} className="mt-4 px-3 py-1.5 bg-accent text-white text-[13px] font-bold rounded-[var(--radius-sm)] flex items-center gap-2 w-fit hover:bg-accent/90 transition-colors">
+               <RefreshCw size={14} /> Retry Failed Steps
+             </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

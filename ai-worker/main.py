@@ -86,10 +86,25 @@ async def process_ai_job(job, token):
 
     temp_dir = tempfile.mkdtemp(prefix="ai-worker-")
 
+    async def execute_step(step_id: str, name: str, func):
+        step = await asyncio.to_thread(db_service.get_job_step, job_id, step_id)
+        if step and step.get("status") == "completed":
+            log.info("step_already_completed_skipping", step_id=step_id)
+            return True, None
+        
+        await asyncio.to_thread(db_service.upsert_job_step, job_id, step_id, name, "processing")
+        try:
+            res = await func()
+            await asyncio.to_thread(db_service.upsert_job_step, job_id, step_id, name, "completed")
+            return False, res
+        except Exception as e:
+            await asyncio.to_thread(db_service.upsert_job_step, job_id, step_id, name, "failed", str(e))
+            raise
+
     try:
         # Update progress: AI processing started
-        db_service.update_job_progress(job_id, 75, "processing_ai")
-        await job.updateProgress(75)
+        db_service.update_job_progress(job_id, 10, "processing_ai")
+        await job.updateProgress(10)
 
         # 1. Download processed audio using blob path (not URL)
         log.info("downloading_audio", blob_path=processed_blob_path)
@@ -97,67 +112,68 @@ async def process_ai_job(job, token):
         await asyncio.to_thread(storage_service.download_blob, processed_blob_path, audio_path)
 
         # 2. Transcribe with Whisper
-        log.info("transcribing_audio")
-        db_service.update_job_progress(job_id, 80, "transcribing")
-        transcript_text = await asyncio.to_thread(ai_service.transcribe, audio_path)
-        await job.updateProgress(85)
+        async def do_transcription():
+            log.info("transcribing_audio")
+            text = await asyncio.to_thread(ai_service.transcribe, audio_path)
+            await asyncio.to_thread(db_service.save_episode_transcript, episode_id, text)
+            return text
+            
+        skipped, transcript_text = await execute_step("transcription", "Audio Transcription", do_transcription)
+        if skipped:
+            transcript_text = await asyncio.to_thread(db_service.get_episode_transcript, episode_id)
+            
+        if not transcript_text:
+            raise ValueError("Transcript is missing")
 
-        # 3 & 4. Generate metadata and episode-level embedding in parallel
-        log.info("generating_metadata_and_embeddings")
-        db_service.update_job_progress(job_id, 85, "generating_ai_content")
-        
-        metadata_task = asyncio.to_thread(ai_service.generate_metadata, transcript_text)
-        embedding_task = asyncio.to_thread(ai_service.generate_embedding, transcript_text[:15000])
-        
-        metadata, episode_embedding = await asyncio.gather(metadata_task, embedding_task)
-        await job.updateProgress(90)
+        db_service.update_job_progress(job_id, 40, "generating_ai_content")
+        await job.updateProgress(40)
 
-        # 5. Chunk transcript and generate chunk embeddings for RAG
-        log.info("chunking_transcript_for_rag")
-        db_service.update_job_progress(job_id, 90, "generating_rag_embeddings")
-
-        chunks = await asyncio.to_thread(
-            ai_service.chunk_transcript,
-            transcript_text,
-            settings.chunk_size,
-            settings.chunk_overlap,
-        )
-
-        if chunks:
-            chunks = await asyncio.to_thread(
-                ai_service.generate_chunk_embeddings,
-                chunks,
-                settings.embedding_batch_size,
-            )
-        await job.updateProgress(96)
-
-        # 6. Save to database — episode AI results + chunk embeddings
-        log.info("saving_results")
-        db_service.save_episode_ai_results(
-            episode_id=episode_id,
-            job_id=job_id,
-            transcript=transcript_text,
-            ai_summary=metadata.get("aiSummary"),
-            chapters=metadata.get("chapters", []),
-            show_notes=metadata.get("showNotes"),
-            tags=metadata.get("tags", []),
-            recommendations=metadata.get("recommendations"),
-        )
-
-        # Save chunk embeddings for RAG retrieval
-        if chunks:
+        # 3. Generate metadata
+        async def do_metadata():
+            log.info("generating_metadata")
+            meta = await asyncio.to_thread(ai_service.generate_metadata, transcript_text)
+            # Save metadata early
             await asyncio.to_thread(
-                db_service.save_episode_chunks,
-                episode_id,
-                chunks,
+                db_service.save_episode_ai_results,
+                episode_id=episode_id,
+                transcript=transcript_text,
+                ai_summary=meta.get("aiSummary"),
+                chapters=meta.get("chapters", []),
+                show_notes=meta.get("showNotes"),
+                tags=meta.get("tags", []),
+                recommendations=meta.get("recommendations"),
+            )
+            return meta
+            
+        await execute_step("metadata_generation", "AI Metadata Generation", do_metadata)
+        
+        db_service.update_job_progress(job_id, 70, "generating_rag_embeddings")
+        await job.updateProgress(70)
+
+        # 4. RAG Embeddings (Chunks + Episode embedding)
+        async def do_rag():
+            log.info("chunking_transcript_for_rag")
+            chunks = await asyncio.to_thread(
+                ai_service.chunk_transcript,
+                transcript_text,
+                settings.chunk_size,
+                settings.chunk_overlap,
             )
 
-        await job.updateProgress(100)
-        log.info(
-            "job_completed",
-            chunk_count=len(chunks),
-            embedding_dims=len(episode_embedding) if episode_embedding else 0,
-        )
+            if chunks:
+                chunks = await asyncio.to_thread(
+                    ai_service.generate_chunk_embeddings,
+                    chunks,
+                    settings.embedding_batch_size,
+                )
+                await asyncio.to_thread(db_service.save_episode_chunks, episode_id, chunks)
+            return chunks
+            
+        await execute_step("rag_embedding", "RAG Embeddings", do_rag)
+
+        # Mark episode published and job completed at the very end
+        await asyncio.to_thread(db_service.mark_episode_published, episode_id, job_id)
+        log.info("job_completed")
 
     except Exception as e:
         log.error("job_failed", error=str(e))

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { episode, job, podcast } from "@/lib/db/schema";
-import { and, desc, eq } from "drizzle-orm";
+import { episode, job, jobStep, podcast } from "@/lib/db/schema";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { podcastProcessingQueue } from "@/lib/queue";
 import { storageService } from "@/lib/storage";
 
@@ -65,28 +65,49 @@ export class EpisodeService {
       )
       .orderBy(desc(episode.createdAt));
 
-    // Auto-heal stuck episodes (where episode is processing but the latest job failed)
-    const processingEpisodes = episodes.filter(ep => 
-      ep.status === 'processing' || ep.status === 'processing_ai' || ep.status === 'uploading'
-    );
+    const resultEpisodes: any[] = episodes.map(ep => ({ ...ep, latestJob: null, jobSteps: [] }));
     
-    for (const ep of processingEpisodes) {
-      // Find the latest job for this episode
-      const [latestJob] = await db
+    if (episodes.length > 0) {
+      const episodeIds = episodes.map(e => e.id);
+      const allJobs = await db
         .select()
         .from(job)
-        .where(eq(job.episodeId, ep.id))
-        .orderBy(desc(job.createdAt))
-        .limit(1);
+        .where(inArray(job.episodeId, episodeIds))
+        .orderBy(desc(job.createdAt));
         
-      if (latestJob && latestJob.status === 'failed') {
-        // Heal it
-        await db.update(episode).set({ status: 'failed' }).where(eq(episode.id, ep.id));
-        ep.status = 'failed';
+      const latestJobsMap = new Map();
+      for (const j of allJobs) {
+        if (!latestJobsMap.has(j.episodeId)) {
+          latestJobsMap.set(j.episodeId, j);
+        }
+      }
+      
+      const jobIds = Array.from(latestJobsMap.values()).map(j => j.id);
+      
+      let allJobSteps: any[] = [];
+      if (jobIds.length > 0) {
+        allJobSteps = await db
+          .select()
+          .from(jobStep)
+          .where(inArray(jobStep.jobId, jobIds))
+          .orderBy(jobStep.startedAt);
+      }
+      
+      for (const ep of resultEpisodes) {
+        const latestJob = latestJobsMap.get(ep.id);
+        if (latestJob) {
+          ep.latestJob = latestJob;
+          ep.jobSteps = allJobSteps.filter(s => s.jobId === latestJob.id);
+          
+          if (latestJob.status === 'failed' && (ep.status === 'processing' || ep.status === 'processing_ai' || ep.status === 'uploading')) {
+             await db.update(episode).set({ status: 'failed' }).where(eq(episode.id, ep.id));
+             ep.status = 'failed';
+          }
+        }
       }
     }
 
-    return episodes;
+    return resultEpisodes;
   }
 
   /**

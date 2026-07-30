@@ -5,10 +5,11 @@ import * as path from "path";
 import * as fs from "fs";
 import * as os from "os";
 import pino from "pino";
-import { db, pool, episode, job as jobSchema } from "./db";
-import { eq } from "drizzle-orm";
+import { db, pool, episode, job as jobSchema, jobStep } from "./db";
+import { eq, and } from "drizzle-orm";
 import { storageProvider } from "./storage";
 import { processAudio } from "./audio";
+import { randomUUID } from "crypto";
 
 // --- Structured Logger ---
 const logger = pino({
@@ -78,6 +79,55 @@ async function updateJobProgress(
     .where(eq(jobSchema.id, jobId));
 }
 
+// --- Step Idempotency Helper ---
+async function executeStep(
+  jobId: string,
+  stepId: string,
+  name: string,
+  fn: () => Promise<void>
+) {
+  const [existingStep] = await db
+    .select()
+    .from(jobStep)
+    .where(and(eq(jobStep.jobId, jobId), eq(jobStep.stepId, stepId)));
+
+  if (existingStep?.status === "completed") {
+    logger.info({ jobId, stepId }, "step_already_completed_skipping");
+    return;
+  }
+
+  if (existingStep) {
+    await db
+      .update(jobStep)
+      .set({ status: "processing", startedAt: new Date(), error: null })
+      .where(eq(jobStep.id, existingStep.id));
+  } else {
+    await db.insert(jobStep).values({
+      id: randomUUID(),
+      jobId,
+      stepId,
+      name,
+      status: "processing",
+      startedAt: new Date(),
+    });
+  }
+
+  try {
+    await fn();
+    await db
+      .update(jobStep)
+      .set({ status: "completed", completedAt: new Date() })
+      .where(and(eq(jobStep.jobId, jobId), eq(jobStep.stepId, stepId)));
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    await db
+      .update(jobStep)
+      .set({ status: "failed", error: errorMessage, completedAt: new Date() })
+      .where(and(eq(jobStep.jobId, jobId), eq(jobStep.stepId, stepId)));
+    throw error;
+  }
+}
+
 // --- Main Job Processor ---
 async function processJob(job: Job) {
   const payload = validateJobPayload(job.data);
@@ -86,69 +136,81 @@ async function processJob(job: Job) {
 
   log.info("media_processing_started");
 
-  // Derive processed blob path
-  const processedBlobPath = StoragePaths.processedAudio(episodeId);
-
-  // Get raw blob path from the database (since extension varies)
-  const [episodeRecord] = await db
-    .select()
-    .from(episode)
-    .where(eq(episode.id, episodeId));
-
-  if (!episodeRecord || !episodeRecord.rawBlob) {
-    throw new Error(`Episode ${episodeId} not found or has no rawBlob`);
-  }
-
-  const rawBlobPath = episodeRecord.rawBlob;
-  const ext = rawBlobPath.split(".").pop() || "webm";
-
-  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "podcast-"));
-  const inputPath = path.join(tempDir, `input.${ext}`);
-  const outputPath = path.join(tempDir, "output.m4a");
-
   try {
-    await updateJobProgress(jobId, 10);
-    await job.updateProgress(10);
+    await updateJobProgress(jobId, 0, "processing_media");
+    await job.updateProgress(0);
 
-    // 1. Download audio using blob path (not URL)
-    log.info({ blobPath: rawBlobPath }, "downloading_blob");
-    await storageProvider.downloadToFile(rawBlobPath, inputPath);
-    await updateJobProgress(jobId, 30);
-    await job.updateProgress(30);
+    await executeStep(jobId, "media_processing", "Media Processing", async () => {
+      // Derive processed blob path
+      const processedBlobPath = StoragePaths.processedAudio(episodeId);
 
-    // 2. Process audio (normalize & convert)
-    log.info("processing_audio");
-    await processAudio(inputPath, outputPath);
-    await updateJobProgress(jobId, 60);
-    await job.updateProgress(60);
+      // Get raw blob path from the database (since extension varies)
+      const [episodeRecord] = await db
+        .select()
+        .from(episode)
+        .where(eq(episode.id, episodeId));
 
-    // 3. Generate waveform (deferred to client)
-    await updateJobProgress(jobId, 70);
-    await job.updateProgress(70);
+      if (!episodeRecord || !episodeRecord.rawBlob) {
+        throw new Error(`Episode ${episodeId} not found or has no rawBlob`);
+      }
 
-    // 4. Upload processed audio to deterministic path
-    log.info({ blobPath: processedBlobPath }, "uploading_processed_audio");
-    await storageProvider.uploadFile(outputPath, processedBlobPath, "audio/m4a", {
-      episodeId,
-      podcastId,
-      userId,
-      source: "media-worker",
-      uploadedAt: new Date().toISOString(),
+      const rawBlobPath = episodeRecord.rawBlob;
+      const ext = rawBlobPath.split(".").pop() || "webm";
+
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "podcast-"));
+      const inputPath = path.join(tempDir, `input.${ext}`);
+      const outputPath = path.join(tempDir, "output.m4a");
+
+      try {
+        await updateJobProgress(jobId, 10);
+        await job.updateProgress(10);
+
+        // 1. Download audio using blob path (not URL)
+        log.info({ blobPath: rawBlobPath }, "downloading_blob");
+        await storageProvider.downloadToFile(rawBlobPath, inputPath);
+        await updateJobProgress(jobId, 30);
+        await job.updateProgress(30);
+
+        // 2. Process audio (normalize & convert)
+        log.info("processing_audio");
+        await processAudio(inputPath, outputPath);
+        await updateJobProgress(jobId, 60);
+        await job.updateProgress(60);
+
+        // 3. Generate waveform (deferred to client)
+        await updateJobProgress(jobId, 70);
+        await job.updateProgress(70);
+
+        // 4. Upload processed audio to deterministic path
+        log.info({ blobPath: processedBlobPath }, "uploading_processed_audio");
+        await storageProvider.uploadFile(outputPath, processedBlobPath, "audio/m4a", {
+          episodeId,
+          podcastId,
+          userId,
+          source: "media-worker",
+          uploadedAt: new Date().toISOString(),
+        });
+
+        const stats = fs.statSync(outputPath);
+
+        // 5. Update Database — store blob path, not URL
+        log.info("updating_database");
+        await db
+          .update(episode)
+          .set({
+            processedBlob: processedBlobPath,
+            fileSizeBytes: stats.size,
+            mimeType: "audio/m4a",
+            updatedAt: new Date(),
+          })
+          .where(eq(episode.id, episodeId));
+
+      } finally {
+        // Always cleanup temp files
+        fs.rmSync(tempDir, { recursive: true, force: true });
+        log.debug({ tempDir }, "temp_dir_cleaned");
+      }
     });
-
-    const stats = fs.statSync(outputPath);
-
-    // 5. Update Database — store blob path, not URL
-    log.info("updating_database");
-    await db
-      .update(episode)
-      .set({
-        processedBlob: processedBlobPath,
-        fileSizeBytes: stats.size,
-        mimeType: "audio/m4a",
-        updatedAt: new Date(),
-      })
-      .where(eq(episode.id, episodeId));
 
     await updateJobProgress(jobId, 100, "media_done");
     await job.updateProgress(100);
@@ -162,6 +224,8 @@ async function processJob(job: Job) {
       episodeId,
       podcastId,
       userId,
+    }, {
+      jobId
     });
   } catch (error) {
     const errorMessage =
@@ -179,10 +243,6 @@ async function processJob(job: Job) {
       .where(eq(episode.id, episodeId));
 
     throw error;
-  } finally {
-    // Always cleanup temp files
-    fs.rmSync(tempDir, { recursive: true, force: true });
-    log.debug({ tempDir }, "temp_dir_cleaned");
   }
 }
 

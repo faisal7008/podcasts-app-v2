@@ -30,6 +30,17 @@ export const job = pgTable("Job", {
   updatedAt: timestamp("updatedAt").notNull(),
 });
 
+export const jobStep = pgTable("JobStep", {
+  id: text("id").primaryKey(),
+  jobId: text("jobId").notNull(),
+  stepId: text("stepId").notNull(),
+  name: text("name").notNull(),
+  status: text("status").notNull().default("pending"),
+  error: text("error"),
+  startedAt: timestamp("startedAt"),
+  completedAt: timestamp("completedAt"),
+});
+
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }

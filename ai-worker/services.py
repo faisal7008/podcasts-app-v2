@@ -51,6 +51,64 @@ class DatabaseService:
                 (progress, status, job_id),
             )
 
+    def get_job_step(self, job_id: str, step_id: str) -> dict:
+        with self._pool.connection() as conn:
+            return conn.execute(
+                """
+                SELECT * FROM "JobStep"
+                WHERE "jobId" = %s AND "stepId" = %s
+                """,
+                (job_id, step_id),
+            ).fetchone()
+
+    def upsert_job_step(self, job_id: str, step_id: str, name: str, status: str, error: str = None):
+        import uuid
+        with self._pool.connection() as conn:
+            step = conn.execute(
+                """
+                SELECT id FROM "JobStep"
+                WHERE "jobId" = %s AND "stepId" = %s
+                """,
+                (job_id, step_id),
+            ).fetchone()
+
+            if step:
+                if status == "processing":
+                    conn.execute(
+                        """
+                        UPDATE "JobStep"
+                        SET status = %s, error = %s, "startedAt" = NOW()
+                        WHERE "jobId" = %s AND "stepId" = %s
+                        """,
+                        (status, error, job_id, step_id),
+                    )
+                elif status == "completed":
+                    conn.execute(
+                        """
+                        UPDATE "JobStep"
+                        SET status = %s, "completedAt" = NOW()
+                        WHERE "jobId" = %s AND "stepId" = %s
+                        """,
+                        (status, job_id, step_id),
+                    )
+                elif status == "failed":
+                    conn.execute(
+                        """
+                        UPDATE "JobStep"
+                        SET status = %s, error = %s, "completedAt" = NOW()
+                        WHERE "jobId" = %s AND "stepId" = %s
+                        """,
+                        (status, error, job_id, step_id),
+                    )
+            else:
+                conn.execute(
+                    """
+                    INSERT INTO "JobStep" (id, "jobId", "stepId", name, status, "startedAt")
+                    VALUES (%s, %s, %s, %s, %s, NOW())
+                    """,
+                    (str(uuid.uuid4()), job_id, step_id, name, status),
+                )
+
     def update_job_failed(self, job_id: str, error: str):
         """Mark a job as failed with an error message."""
         with self._pool.connection() as conn:
@@ -75,10 +133,28 @@ class DatabaseService:
                 (episode_id,),
             )
 
+    def save_episode_transcript(self, episode_id: str, transcript: str):
+        with self._pool.connection() as conn:
+            conn.execute(
+                """
+                UPDATE "Episode" SET transcript = %s WHERE id = %s
+                """,
+                (transcript, episode_id),
+            )
+
+    def get_episode_transcript(self, episode_id: str) -> str:
+        with self._pool.connection() as conn:
+            row = conn.execute(
+                """
+                SELECT transcript FROM "Episode" WHERE id = %s
+                """,
+                (episode_id,),
+            ).fetchone()
+            return row["transcript"] if row else None
+
     def save_episode_ai_results(
         self,
         episode_id: str,
-        job_id: str,
         transcript: str,
         ai_summary: Optional[str],
         chapters: List[Dict],
@@ -86,7 +162,7 @@ class DatabaseService:
         tags: List[str],
         recommendations: Optional[str],
     ):
-        """Save AI-generated data to episode and mark job complete."""
+        """Save AI-generated data to episode."""
         with self._pool.connection() as conn:
             with conn.transaction():
                 conn.execute(
@@ -98,7 +174,6 @@ class DatabaseService:
                         "showNotes" = %s,
                         tags = %s,
                         recommendations = %s,
-                        status = 'published',
                         "updatedAt" = NOW()
                     WHERE id = %s
                     """,
@@ -111,6 +186,19 @@ class DatabaseService:
                         recommendations,
                         episode_id,
                     ),
+                )
+
+    def mark_episode_published(self, episode_id: str, job_id: str):
+        """Mark the episode as published and job as completed."""
+        with self._pool.connection() as conn:
+            with conn.transaction():
+                conn.execute(
+                    """
+                    UPDATE "Episode"
+                    SET status = 'published', "updatedAt" = NOW()
+                    WHERE id = %s
+                    """,
+                    (episode_id,),
                 )
                 conn.execute(
                     """
