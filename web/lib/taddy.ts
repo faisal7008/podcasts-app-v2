@@ -383,7 +383,7 @@ export async function getTopCategories(limit: number = 20): Promise<string[]> {
 
   const genresSet = new Set<string>();
   const series = response.data.search.podcastSeries || [];
-  
+
   for (const s of series) {
     const rawGenres = s.genres as string[];
     if (Array.isArray(rawGenres)) {

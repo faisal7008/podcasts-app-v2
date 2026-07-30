@@ -70,7 +70,10 @@ export async function GET(request: NextRequest) {
         history.map(async (h) => {
           try {
             const ep = await EpisodeService.resolveEpisode(h.episodeId);
-            return ep ? { ...ep, progressSeconds: h.progressSeconds } : null;
+            if (!ep) return null;
+            // Strip heavy fields — list views never render the full transcript
+            const { transcript, chapters, recommendations, ...light } = ep as any;
+            return { ...light, progressSeconds: h.progressSeconds };
           } catch {
             return null;
           }

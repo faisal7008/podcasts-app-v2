@@ -7,7 +7,11 @@ const connection = {
   password: process.env.REDIS_PASSWORD,
 };
 
-export const podcastProcessingQueue = new Queue(QueueNames.MEDIA_PIPELINE, {
+const globalForQueue = globalThis as unknown as {
+  podcastQueue: Queue | undefined;
+};
+
+export const podcastProcessingQueue = globalForQueue.podcastQueue ?? new Queue(QueueNames.MEDIA_PIPELINE, {
   connection,
   defaultJobOptions: {
     attempts: 3,
@@ -16,3 +20,5 @@ export const podcastProcessingQueue = new Queue(QueueNames.MEDIA_PIPELINE, {
     removeOnFail: false
   }
 });
+
+if (process.env.NODE_ENV !== "production") globalForQueue.podcastQueue = podcastProcessingQueue;

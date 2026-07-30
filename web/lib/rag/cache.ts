@@ -8,12 +8,14 @@
 
 import Redis from "ioredis";
 
-let _redis: Redis | null = null;
+const globalForRedisCache = globalThis as unknown as {
+  redisCache: Redis | undefined;
+};
 
 function getRedis(): Redis {
-  if (_redis) return _redis;
+  if (globalForRedisCache.redisCache) return globalForRedisCache.redisCache;
 
-  _redis = new Redis({
+  const redis = new Redis({
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: parseInt(process.env.REDIS_PORT || "6379"),
     password: process.env.REDIS_PASSWORD || undefined,
@@ -21,11 +23,13 @@ function getRedis(): Redis {
     lazyConnect: true,
   });
 
-  _redis.on("error", (err) => {
+  redis.on("error", (err) => {
     console.error("[RAG Cache] Redis error:", err.message);
   });
 
-  return _redis;
+  if (process.env.NODE_ENV !== "production") globalForRedisCache.redisCache = redis;
+
+  return redis;
 }
 
 const EMBEDDING_TTL = 24 * 60 * 60; // 24 hours

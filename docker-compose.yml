@@ -17,6 +17,11 @@ services:
       - ./web/.env
     environment:
       - REDIS_HOST=redis
+      # Cap V8 heap so GC engages before RSS balloons (sharp native memory
+      # adds on top of this).
+      - NODE_OPTIONS=--max-old-space-size=1024
+    mem_limit: 2g
+    mem_reservation: 512m
     depends_on:
       # - db
       - redis

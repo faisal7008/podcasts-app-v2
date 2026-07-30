@@ -7,12 +7,14 @@
 
 import Redis from "ioredis";
 
-let _redis: Redis | null = null;
+const globalForRateLimiter = globalThis as unknown as {
+  redisRateLimiter: Redis | undefined;
+};
 
 function getRedis(): Redis {
-  if (_redis) return _redis;
+  if (globalForRateLimiter.redisRateLimiter) return globalForRateLimiter.redisRateLimiter;
 
-  _redis = new Redis({
+  const redis = new Redis({
     host: process.env.REDIS_HOST || "127.0.0.1",
     port: parseInt(process.env.REDIS_PORT || "6379"),
     password: process.env.REDIS_PASSWORD || undefined,
@@ -20,11 +22,13 @@ function getRedis(): Redis {
     lazyConnect: true,
   });
 
-  _redis.on("error", (err) => {
+  redis.on("error", (err) => {
     console.error("[RAG RateLimiter] Redis error:", err.message);
   });
 
-  return _redis;
+  if (process.env.NODE_ENV !== "production") globalForRateLimiter.redisRateLimiter = redis;
+
+  return redis;
 }
 
 const RATE_LIMIT_PREFIX = "rag:rl:";

@@ -9,10 +9,12 @@
 import OpenAI from "openai";
 
 // Lazy singleton — instantiated on first use, not at import time
-let _client: OpenAI | null = null;
+const globalForOpenAI = globalThis as unknown as {
+  openAIClient: OpenAI | undefined;
+};
 
 function getOpenAIClient(): OpenAI {
-  if (_client) return _client;
+  if (globalForOpenAI.openAIClient) return globalForOpenAI.openAIClient;
 
   const apiKey = process.env.AZURE_OPENAI_API_KEY;
   const endpoint = process.env.AZURE_OPENAI_ENDPOINT;
@@ -23,12 +25,14 @@ function getOpenAIClient(): OpenAI {
     );
   }
 
-  _client = new OpenAI({
+  const client = new OpenAI({
     apiKey,
     baseURL: endpoint,
   });
 
-  return _client;
+  if (process.env.NODE_ENV !== "production") globalForOpenAI.openAIClient = client;
+
+  return client;
 }
 
 export const RAG_CONFIG = {

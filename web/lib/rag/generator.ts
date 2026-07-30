@@ -127,6 +127,11 @@ ${contextBlock}
         controller.error(error);
       }
     },
+    // Client disconnected — abort the upstream OpenAI stream so it doesn't
+    // keep buffering tokens (and the chunks array) until completion.
+    cancel() {
+      stream.controller.abort();
+    },
   });
 }
 

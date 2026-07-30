@@ -28,8 +28,34 @@ export class EpisodeService {
    * Fetch all episodes for a specific podcast that belongs to the user
    */
   static async getEpisodesForPodcast(podcastId: string, userId: string) {
+    // Explicit column list — excludes `transcript` and `waveformData`, which
+    // can be MBs per row and are never needed in list views. Loading them
+    // for every episode was creating huge transient heap allocations.
     const episodes = await db
-      .select()
+      .select({
+        id: episode.id,
+        podcastId: episode.podcastId,
+        userId: episode.userId,
+        number: episode.number,
+        title: episode.title,
+        description: episode.description,
+        datePublished: episode.datePublished,
+        artwork: episode.artwork,
+        duration: episode.duration,
+        rawBlob: episode.rawBlob,
+        processedBlob: episode.processedBlob,
+        transcriptBlob: episode.transcriptBlob,
+        fileSizeBytes: episode.fileSizeBytes,
+        mimeType: episode.mimeType,
+        status: episode.status,
+        aiSummary: episode.aiSummary,
+        chapters: episode.chapters,
+        showNotes: episode.showNotes,
+        tags: episode.tags,
+        recommendations: episode.recommendations,
+        createdAt: episode.createdAt,
+        updatedAt: episode.updatedAt,
+      })
       .from(episode)
       .where(
         and(
