@@ -26,6 +26,8 @@ The application leverages Next.js App Router for server-side rendering and API r
   - Upload audio and artwork directly to Azure Blob Storage using secure, short-lived SAS tokens, bypassing server bottlenecks.
   - Record audio natively in the browser leveraging the MediaRecorder API.
 - **AI Processing Pipeline Engine:** A background job queue system tracking the asynchronous processing of uploaded episodes (e.g., automated transcripts, AI summaries, chapters).
+- **Semantic Search & Discovery:** Utilizes RAG (Retrieval-Augmented Generation) embeddings for context-aware podcast searching, moving beyond simple keyword matching.
+- **Interactive AI Chat:** An AI-powered conversational interface that allows users to ask questions and gain insights directly from episode transcripts.
 - **Responsive & Modern UI:** A beautiful, responsive interface utilizing Tailwind CSS v4, smooth micro-interactions with Framer Motion, and scalable iconography via Lucide React.
 
 ## 🛠️ Tech Stack
@@ -49,6 +51,7 @@ Ensure you have the following installed on your local machine:
 - Node.js (v18.17.0 or newer)
 - npm or pnpm or yarn
 - A running instance of PostgreSQL (e.g., Neon, Supabase, Docker, or local)
+- Redis (required for BullMQ background jobs and caching)
 
 ### Installation
 
@@ -96,6 +99,12 @@ Ensure you have the following installed on your local machine:
    ```
    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
+   *Alternatively, you can run the entire stack (including Redis, Postgres, and the background workers) from the repository root using Docker Compose:*
+   ```bash
+   cd ..
+   docker-compose up -d
+   ```
+
 ## 🏗️ Architecture & Technical Decisions
 
 - **API Proxy Pattern:** To circumvent exposing third-party API keys and to handle aggressive caching (`staleTime: 5m`), the Next.js server acts as an intermediary for all Taddy API requests. This respects strict rate limits (e.g., 500 requests/month on Free Tiers).
@@ -127,4 +136,4 @@ This project is optimized for deployment on Vercel.
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is proprietary and confidential.
