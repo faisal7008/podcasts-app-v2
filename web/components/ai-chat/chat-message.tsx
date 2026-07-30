@@ -3,6 +3,8 @@
 import { cn } from "@/lib/utils";
 import { SourceCard } from "./source-card";
 import type { ChatMessageItem } from "./chat-provider";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface ChatMessageProps {
   message: ChatMessageItem;
@@ -52,7 +54,47 @@ export function ChatMessage({ message }: ChatMessageProps) {
           {message.isStreaming && !message.content ? (
             <TypingIndicator />
           ) : (
-            <div className="whitespace-pre-wrap">{message.content}</div>
+            <div className="w-full break-words">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                  a: ({ href, children }) => (
+                    <a href={href} target="_blank" rel="noopener noreferrer" className="text-violet-500 hover:underline">
+                      {children}
+                    </a>
+                  ),
+                  ul: ({ children }) => <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>,
+                  ol: ({ children }) => <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>,
+                  li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+                  strong: ({ children }) => <strong className="font-bold">{children}</strong>,
+                  em: ({ children }) => <em className="italic">{children}</em>,
+                  h1: ({ children }) => <h1 className="text-lg font-bold mb-2 mt-4 first:mt-0">{children}</h1>,
+                  h2: ({ children }) => <h2 className="text-base font-bold mb-2 mt-3 first:mt-0">{children}</h2>,
+                  h3: ({ children }) => <h3 className="text-sm font-bold mb-2 mt-3 first:mt-0">{children}</h3>,
+                  code: ({ inline, className, children, ...props }: any) => {
+                    return !inline ? (
+                      <pre className="bg-black/10 dark:bg-white/10 p-2 rounded-md overflow-x-auto mb-2 text-[11px] font-mono">
+                        <code {...props} className={className}>
+                          {children}
+                        </code>
+                      </pre>
+                    ) : (
+                      <code className="bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded text-[12px] font-mono" {...props}>
+                        {children}
+                      </code>
+                    );
+                  },
+                  blockquote: ({ children }) => (
+                    <blockquote className="border-l-2 border-violet-500 pl-3 italic text-inherit opacity-80 mb-2">
+                      {children}
+                    </blockquote>
+                  ),
+                }}
+              >
+                {message.content}
+              </ReactMarkdown>
+            </div>
           )}
 
           {message.isStreaming && message.content && (
