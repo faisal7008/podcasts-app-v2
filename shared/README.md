@@ -1,12 +1,21 @@
-# Shared
+# Shared (`@podcasts/shared`)
 
-A shared TypeScript library containing common types, utilities, and configurations used across the Podcasts App v2 workspace (specifically between the `web` and `media-worker` services).
+A shared TypeScript library containing common queue definitions, validation schemas, and Azure Blob Storage utilities used across `web` and `media-worker`.
 
-## Features
+## Exports
 
-- Shared Zod schemas for validation
-- Azure Storage Blob utilities and path definitions
-- Common TypeScript interfaces
+Defined in `src/index.ts`:
+
+- **`queue.ts`**:
+  - `QueueNames`: Canonical BullMQ queue names (`MEDIA_PIPELINE: "media-pipeline"`, `AI_PIPELINE: "ai-pipeline"`).
+  - `MediaJobPayloadSchema` / `MediaJobPayload`: Zod schema and TypeScript type for `media-pipeline` job payloads.
+  - `AiJobPayloadSchema` / `AiJobPayload`: Zod schema and TypeScript type for `ai-pipeline` job payloads.
+- **`storage-paths.ts`**:
+  - `StoragePaths`: Deterministic Azure Blob Storage path builders shared across services.
+- **`storage-provider.ts`**:
+  - `StorageProvider`: Storage abstraction interface.
+- **`storage-service.ts`**:
+  - `AzureStorageService`: Azure Blob Storage client wrapper and SAS URL helpers (`@azure/storage-blob`).
 
 ## Setup
 
@@ -19,4 +28,4 @@ A shared TypeScript library containing common types, utilities, and configuratio
    npm run build
    ```
 
-The output will be placed in the `dist` directory, generating both commonjs output and TypeScript declaration files (`.d.ts`).
+The TypeScript compiler (`tsc`) outputs CommonJS modules and `.d.ts` declaration files to `dist/`. Rebuild this package whenever its source changes so `web` and `media-worker` pick up the updated types and build artifacts.

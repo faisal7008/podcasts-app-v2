@@ -1,4 +1,4 @@
-# 🎙️ Podcasts App v2
+# 🎙️ Podcasts App v2 — Web
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React](https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react)](https://react.dev/)
@@ -7,132 +7,117 @@
 [![Drizzle ORM](https://img.shields.io/badge/Drizzle_ORM-PostgreSQL-C5F74F?style=for-the-badge&logo=drizzle)](https://orm.drizzle.team/)
 [![Azure Storage](https://img.shields.io/badge/Azure_Blob_Storage-0089D6?style=for-the-badge&logo=microsoft-azure)](https://azure.microsoft.com/en-us/products/storage/blobs/)
 
-> A fully functional, production-ready full-stack podcast platform built with the Next.js App Router, Tailwind CSS v4, Drizzle ORM, and the Taddy Podcast API.
+> Full-stack podcast streaming, Creator Studio, and RAG-powered AI discovery platform built with the Next.js App Router, Tailwind CSS v4, Drizzle ORM, pgvector, and the Taddy Podcast API.
 
 ## 📖 Overview
 
-Podcasts App v2 is a comprehensive podcast streaming and publishing platform. It serves both listeners who want to discover and play podcasts from the global Taddy GraphQL API and creators who want a dedicated studio to upload, manage, and process their own podcast episodes.
-
-The application leverages Next.js App Router for server-side rendering and API routes, Better Auth for secure user management, and Drizzle ORM connected to a PostgreSQL database for robust data persistence. Audio and media files are seamlessly handled via direct-to-cloud Azure Blob Storage integrations.
+`web` serves both the listener experience (discovering and playing podcasts via the Taddy GraphQL API and creator-published episodes) and the Creator Studio (recording/uploading audio, tracking background processing jobs, and publishing episodes). It also exposes RAG endpoints backed by PostgreSQL `pgvector`, Redis, and Azure OpenAI for semantic search and conversational Q&A over episode transcripts.
 
 ## ✨ Key Features
 
-- **Taddy API Integration:** Fetches real podcast data via GraphQL, proxied securely through Next.js Route Handlers to protect API keys and aggressively cache responses using `@tanstack/react-query`.
-- **Global Audio Player:** A persistent, uninterrupted audio player built on top of HTML5 Audio Context that remains active while users navigate the application.
-- **Robust Authentication:** Secure authentication powered by `better-auth`, supporting both OAuth (Google, GitHub) and email/password sign-ins.
-- **Personalized User Experience:** Users can manage profiles, customize playback preferences (theme, playback speed), follow channels, like episodes, and automatically track play history.
-- **Creator Studio Workspace:**
+- **Taddy API Integration:** Proxies Taddy GraphQL requests through Next.js Route Handlers to protect API keys and cache responses with `@tanstack/react-query`.
+- **Global Audio Player:** Persistent HTML5 audio player wrapped at the root layout level (`GlobalPlayerWrapper`) for uninterrupted playback across route transitions, with playback speed, queue, and progress tracking.
+- **Authentication:** Powered by `better-auth` with email/password and OAuth (Google, GitHub) support.
+- **User Library & Social:** Profile management, channel follows, episode likes, and listening progress history.
+- **Creator Studio:**
   - Create and manage custom podcasts and episodes.
-  - Upload audio and artwork directly to Azure Blob Storage using secure, short-lived SAS tokens, bypassing server bottlenecks.
-  - Record audio natively in the browser leveraging the MediaRecorder API.
-- **AI Processing Pipeline Engine:** A background job queue system tracking the asynchronous processing of uploaded episodes (e.g., automated transcripts, AI summaries, chapters).
-- **Semantic Search & Discovery:** Utilizes RAG (Retrieval-Augmented Generation) embeddings for context-aware podcast searching, moving beyond simple keyword matching.
-- **Interactive AI Chat:** An AI-powered conversational interface that allows users to ask questions and gain insights directly from episode transcripts.
-- **Responsive & Modern UI:** A beautiful, responsive interface utilizing Tailwind CSS v4, smooth micro-interactions with Framer Motion, and scalable iconography via Lucide React.
+  - Direct-to-cloud uploads to Azure Blob Storage using short-lived SAS URLs.
+  - Native in-browser audio recording via the MediaRecorder API.
+  - Real-time job pipeline stepper tracking `media-worker` and `ai-worker` stages.
+- **Semantic Search (`GET /api/rag/search`):** Embeds user queries and runs cosine similarity search (`<=>`) against `EpisodeChunk` embeddings in `pgvector`.
+- **Streaming AI Chat (`POST /api/rag/chat`):** Retrieves relevant transcript chunks, streams grounded answers from Azure OpenAI with `[SOURCES]` timestamped citation metadata, persists conversations, and enforces Redis-backed rate limiting and embedding caching.
 
 ## 🛠️ Tech Stack
 
 | Category | Technologies |
 | --- | --- |
-| **Framework** | Next.js (App Router), React 19 |
+| **Framework** | Next.js 16 (App Router), React 19 |
 | **Language** | TypeScript |
-| **Styling** | Tailwind CSS v4, Framer Motion |
-| **Database** | PostgreSQL, Drizzle ORM |
-| **Authentication**| Better Auth |
-| **Data Fetching** | React Query (`@tanstack/react-query`), Taddy GraphQL API |
-| **Cloud Storage** | Azure Blob Storage |
-| **Icons & Forms** | Lucide React, React Hook Form, Zod |
+| **Styling & UI** | Tailwind CSS v4, Framer Motion, Lucide React, Sonner |
+| **Database & Vector Search** | PostgreSQL, `pgvector`, Drizzle ORM |
+| **Queue & Cache** | Redis (`ioredis`), BullMQ |
+| **AI / RAG** | Azure OpenAI (`openai` SDK) |
+| **Authentication** | Better Auth |
+| **Data Fetching & Forms** | TanStack React Query, React Hook Form, Zod |
+| **Cloud Storage** | Azure Blob Storage (`@azure/storage-blob`), `@podcasts/shared` |
 
 ## 🚀 Getting Started
 
 ### Prerequisites
 
-Ensure you have the following installed on your local machine:
-- Node.js (v18.17.0 or newer)
-- npm or pnpm or yarn
-- A running instance of PostgreSQL (e.g., Neon, Supabase, Docker, or local)
-- Redis (required for BullMQ background jobs and caching)
+- Node.js (v18.17.0 or newer) and npm
+- PostgreSQL with the `pgvector` extension enabled
+- Redis (for BullMQ job queues, RAG embedding cache, and rate limiting)
+- Built `@podcasts/shared` package (`cd ../shared && npm install && npm run build`)
 
 ### Installation
 
-1. **Clone the repository:**
+1. **Install dependencies:**
    ```bash
-   git clone <repo-url>
-   cd podcasts-app-v2/web
-   ```
-
-2. **Install dependencies:**
-   ```bash
+   cd web
    npm install
    ```
 
-3. **Configure Environment Variables:**
-   Copy the example environment file and fill in your credentials.
-   ```bash
-   cp .env.example .env.local
-   ```
-   
-   #### Required Environment Variables
-   | Variable | Description |
-   | --- | --- |
-   | `DATABASE_URL` | Your PostgreSQL connection string. |
-   | `TADDY_USER_ID` | User ID for the Taddy GraphQL API ([Get it here](https://taddy.org/)). |
-   | `TADDY_API_KEY` | API Key for the Taddy GraphQL API. |
-   | `BETTER_AUTH_SECRET` | A secure random string for signing auth tokens. |
-   | `BETTER_AUTH_URL` | Base URL of the app (e.g., `http://localhost:3000`). |
-   | `AZURE_STORAGE_ACCOUNT_NAME` | Azure Blob Storage account name. |
-   | `AZURE_STORAGE_ACCOUNT_KEY` | Azure Blob Storage account key. |
-   | `AZURE_STORAGE_CONTAINER_NAME` | Azure Blob Storage container name (default: `podcasts`). |
+2. **Configure Environment Variables:**
+   Create `web/.env` (or `web/.env.local` for local Next.js runs) with the required variables validated in `lib/env.ts` and `lib/rag/openai.ts`:
 
-   *(Optional) Add Google/GitHub Client IDs and Secrets to enable OAuth.*
+   | Variable | Required | Description |
+   | --- | --- | --- |
+   | `DATABASE_URL` | Yes | PostgreSQL connection string. |
+   | `DATABASE_CA_CERT` | No | Optional CA certificate for PostgreSQL SSL. |
+   | `REDIS_HOST` | No | Redis host (default: `127.0.0.1`). |
+   | `REDIS_PORT` | No | Redis port (default: `6379`). |
+   | `REDIS_PASSWORD` | No | Redis password, if required. |
+   | `BETTER_AUTH_SECRET` | Yes | Secret used to sign auth tokens. |
+   | `BETTER_AUTH_URL` | No | Base URL for Better Auth. |
+   | `NEXT_PUBLIC_APP_URL` | Yes | Public base URL of the web app (e.g., `http://localhost:3000`). |
+   | `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID. |
+   | `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret. |
+   | `GITHUB_CLIENT_ID` | Yes | GitHub OAuth client ID. |
+   | `GITHUB_CLIENT_SECRET` | Yes | GitHub OAuth client secret. |
+   | `TADDY_USER_ID` | Yes | Taddy GraphQL API user ID. |
+   | `TADDY_API_KEY` | Yes | Taddy GraphQL API key. |
+   | `AZURE_STORAGE_ACCOUNT_NAME` | Yes | Azure Blob Storage account name. |
+   | `AZURE_STORAGE_ACCOUNT_KEY` | Yes | Azure Blob Storage account key. |
+   | `AZURE_STORAGE_CONTAINER_NAME` | No | Azure Blob Storage container name (default: `podcasts`). |
+   | `AZURE_OPENAI_API_KEY` | Yes (RAG) | Azure OpenAI API key used by `/api/rag/*`. |
+   | `AZURE_OPENAI_ENDPOINT` | Yes (RAG) | Azure OpenAI base endpoint URL. |
+   | `EMBEDDING_DEPLOYMENT_NAME` | No | Embedding deployment name (default: `text-embedding-3-small`). |
+   | `LLM_DEPLOYMENT_NAME` | No | Chat/LLM deployment name (default: `gpt-5.4-nano`). |
 
-4. **Initialize the Database:**
-   Push the Drizzle ORM schema to your PostgreSQL database.
+3. **Enable `pgvector` and Push the Database Schema:**
    ```bash
+   psql "$DATABASE_URL" -f scripts/enable-pgvector.sql
    npm run db:push
    ```
-   *Tip: You can visually inspect your database by running `npm run db:studio`.*
+   *Tip: Inspect your database visually with `npm run db:studio`.*
 
-5. **Run the development server:**
+4. **Run the Development Server:**
    ```bash
    npm run dev
    ```
-   Open [http://localhost:3000](http://localhost:3000) in your browser.
+   Open [http://localhost:3000](http://localhost:3000).
 
-   *Alternatively, you can run the entire stack (including Redis, Postgres, and the background workers) from the repository root using Docker Compose:*
-   ```bash
-   cd ..
-   docker-compose up -d
-   ```
-
-## 🏗️ Architecture & Technical Decisions
-
-- **API Proxy Pattern:** To circumvent exposing third-party API keys and to handle aggressive caching (`staleTime: 5m`), the Next.js server acts as an intermediary for all Taddy API requests. This respects strict rate limits (e.g., 500 requests/month on Free Tiers).
-- **Direct-to-Cloud Uploads:** Uploading large audio files to a Next.js server limits scalability. Instead, the server generates a time-limited SAS (Shared Access Signature) URL, allowing the client browser to PUT the file directly into Azure Blob Storage.
-- **Persistent Global Layout:** The `GlobalPlayerWrapper` encapsulates the `app/layout.tsx`. This Next.js App Router pattern ensures the audio player component does not unmount during route transitions, guaranteeing uninterrupted playback.
-- **Asynchronous Background Processing:** Heavy tasks like transcription or summarization run out-of-band. The database's `Job` table tracks pipeline progression (`pending`, `processing`, `completed`, `error`), providing real-time status updates to the Creator Studio dashboard.
+   Other available scripts:
+   - `npm run dev:turbo` — Run Next.js dev server with Turbopack
+   - `npm run build` — Production build (`next build --webpack`)
+   - `npm run start` — Start production server
+   - `npm run lint` — Run ESLint
 
 ## 📂 Project Structure
 
 ```text
 web/
-├── app/                  # Next.js App Router pages and API route handlers
-├── components/           # Reusable React components (UI, layout, player, studio)
-├── drizzle/              # Drizzle ORM database migrations
-├── hooks/                # Custom React hooks (e.g., useAudioRecorder, usePodcasts)
-├── lib/                  # Core utilities (auth, db, taddy API, azure storage)
-├── public/               # Static assets
+├── app/                  # Next.js App Router pages and API routes (auth, episodes, podcasts, studio, rag)
+├── components/           # UI components (ai-chat, auth, player, profile, studio, semantic search)
+├── drizzle/              # Drizzle ORM migrations and snapshots
+├── hooks/                # Custom React hooks (useAuth, usePodcasts, useAudioRecorder, uploads)
+├── lib/                  # Core utilities (auth, db/schema, env, queue, rag, storage, taddy, validations)
+├── public/               # Static assets and placeholder artwork
+├── scripts/              # Helper scripts (enable-pgvector.sql, generate-placeholders.sh)
+├── services/             # Server/client service helpers (episode, podcast, social)
 └── types/                # TypeScript type definitions
 ```
-
-## ☁️ Deployment
-
-This project is optimized for deployment on Vercel.
-
-1. Push your code to a GitHub repository.
-2. Import the repository into [Vercel](https://vercel.com).
-3. Under **Settings > Environment Variables**, add all the variables specified in your `.env.local` file.
-4. Click **Deploy**. Next.js App Router and API Routes will automatically optimize for Vercel's edge and serverless infrastructure.
 
 ## 📄 License
 
