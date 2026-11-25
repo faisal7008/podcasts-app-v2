@@ -1,0 +1,24 @@
+{
+  "mode": "baseline",
+  "timestamp": "2026-11-25T18:08:26.798Z",
+  "overall": {
+    "count": 17,
+    "recallAt5": 1,
+    "recallAt8": 1,
+    "mrr": 0.9706
+  },
+  "exactEntity": {
+    "count": 8,
+    "recallAt5": 1,
+    "recallAt8": 1,
+    "mrr": 1
+  },
+  "multiTurn": {
+    "count": 3,
+    "recallAt5": 1,
+    "recallAt8": 1,
+    "mrr": 1
+  },
+  "unanswerableAbstention": 0,
+  "avgLocalScoringMsPerQuery": 0.0927
+}

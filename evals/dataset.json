@@ -1,0 +1,213 @@
+{
+  "chunks": [
+    {
+      "id": "ep1-c0",
+      "episodeId": "ep-1",
+      "episodeTitle": "Scaling Vector Search in Production",
+      "timestamp": "01:15",
+      "content": "[01:15] Today we are diving into pgvector HNSW indexes in PostgreSQL. Unlike IVFFlat, HNSW builds a multi-layer navigable small world graph that gives sub-10ms approximate nearest neighbor queries without requiring a training step."
+    },
+    {
+      "id": "ep1-c1",
+      "episodeId": "ep-1",
+      "episodeTitle": "Scaling Vector Search in Production",
+      "timestamp": "04:40",
+      "content": "[04:40] The main trade-off with HNSW is memory usage and index build time. As your EpisodeChunk table grows past a million 1536-dimensional vectors, the HNSW graph can exceed shared_buffers and slow down inserts."
+    },
+    {
+      "id": "ep1-c2",
+      "episodeId": "ep-1",
+      "episodeTitle": "Scaling Vector Search in Production",
+      "timestamp": "09:20",
+      "content": "[09:20] Pure semantic embeddings often miss exact identifiers like error codes, library names such as tsvector, or acronyms like RRF. Combining dense cosine similarity with PostgreSQL full-text search fixes those blind spots."
+    },
+    {
+      "id": "ep2-c0",
+      "episodeId": "ep-2",
+      "episodeTitle": "Resilient Background Workers with BullMQ",
+      "timestamp": "02:05",
+      "content": "[02:05] When processing large audio files, workers crash or get OOM-killed. We use BullMQ with 3 attempts and exponential backoff starting at 2000ms so transient network blips recover automatically."
+    },
+    {
+      "id": "ep2-c1",
+      "episodeId": "ep-2",
+      "episodeTitle": "Resilient Background Workers with BullMQ",
+      "timestamp": "07:30",
+      "content": "[07:30] To prevent duplicate work when a job retries, we record every stage in a JobStep table. Before running transcription or embeddings, the worker checks if that stepId is already marked completed."
+    },
+    {
+      "id": "ep2-c2",
+      "episodeId": "ep-2",
+      "episodeTitle": "Resilient Background Workers with BullMQ",
+      "timestamp": "12:15",
+      "content": "[12:15] FFmpeg normalization runs in a separate Node media-worker container before handing off to the Python ai-worker via the ai-pipeline queue. Keeping media transcoding isolated protects the AI worker from CPU spikes."
+    },
+    {
+      "id": "ep3-c0",
+      "episodeId": "ep-3",
+      "episodeTitle": "Modern Speech-to-Text & Diarization",
+      "timestamp": "03:10",
+      "content": "[03:10] We switched transcription to the Azure Speech REST API with speaker diarization enabled for up to two speakers. Each recognized phrase returns an ISO-8601 offset that we format into [MM:SS] timestamps."
+    },
+    {
+      "id": "ep3-c1",
+      "episodeId": "ep-3",
+      "episodeTitle": "Modern Speech-to-Text & Diarization",
+      "timestamp": "08:50",
+      "content": "[08:50] Splitting transcripts purely by word count cuts right through sentences and speaker turns. Respecting line and sentence boundaries keeps each chunk self-contained for the LLM."
+    },
+    {
+      "id": "ep4-c0",
+      "episodeId": "ep-4",
+      "episodeTitle": "Kubernetes Autoscaling Deep Dive",
+      "timestamp": "05:00",
+      "content": "[05:00] Karpenter replaces traditional Cluster Autoscaler by provisioning right-sized EC2 spot instances in under 45 seconds based on pending pod resource requests."
+    },
+    {
+      "id": "ep4-c1",
+      "episodeId": "ep-4",
+      "episodeTitle": "Kubernetes Autoscaling Deep Dive",
+      "timestamp": "11:25",
+      "content": "[11:25] For serverless cold starts, keeping container images slim and lazy-loading SDK clients at request time rather than module import time cuts startup latency significantly."
+    },
+    {
+      "id": "ep5-c0",
+      "episodeId": "ep-5",
+      "episodeTitle": "SQLite & Edge Databases",
+      "timestamp": "06:12",
+      "content": "[06:12] Enabling SQLite WAL mode (Write-Ahead Logging) allows concurrent readers while a single writer appends to the WAL file, eliminating most SQLITE_BUSY lock errors in read-heavy web apps."
+    },
+    {
+      "id": "ep5-c1",
+      "episodeId": "ep-5",
+      "episodeTitle": "SQLite & Edge Databases",
+      "timestamp": "14:00",
+      "content": "[14:00] Litestream continuously streams SQLite WAL frames to S3 or Azure Blob Storage so you get point-in-time recovery without running a separate database server."
+    }
+  ],
+  "queries": [
+    {
+      "id": "q01",
+      "type": "exact_entity",
+      "query": "pgvector HNSW",
+      "expectedChunkIds": ["ep1-c0", "ep1-c1"]
+    },
+    {
+      "id": "q02",
+      "type": "exact_entity",
+      "query": "BullMQ exponential backoff 2000ms",
+      "expectedChunkIds": ["ep2-c0"]
+    },
+    {
+      "id": "q03",
+      "type": "exact_entity",
+      "query": "JobStep stepId idempotency",
+      "expectedChunkIds": ["ep2-c1"]
+    },
+    {
+      "id": "q04",
+      "type": "exact_entity",
+      "query": "Azure Speech diarization ISO-8601",
+      "expectedChunkIds": ["ep3-c0"]
+    },
+    {
+      "id": "q05",
+      "type": "exact_entity",
+      "query": "Karpenter EC2 spot",
+      "expectedChunkIds": ["ep4-c0"]
+    },
+    {
+      "id": "q06",
+      "type": "exact_entity",
+      "query": "SQLITE_BUSY WAL mode",
+      "expectedChunkIds": ["ep5-c0"]
+    },
+    {
+      "id": "q07",
+      "type": "exact_entity",
+      "query": "tsvector RRF",
+      "expectedChunkIds": ["ep1-c2"]
+    },
+    {
+      "id": "q08",
+      "type": "exact_entity",
+      "query": "Litestream S3",
+      "expectedChunkIds": ["ep5-c1"]
+    },
+    {
+      "id": "q09",
+      "type": "conceptual",
+      "query": "how to prevent duplicate background job execution on retry",
+      "expectedChunkIds": ["ep2-c1"]
+    },
+    {
+      "id": "q10",
+      "type": "conceptual",
+      "query": "reducing startup latency by initializing clients lazily",
+      "expectedChunkIds": ["ep4-c1"]
+    },
+    {
+      "id": "q11",
+      "type": "conceptual",
+      "query": "why isolate audio transcoding from AI processing",
+      "expectedChunkIds": ["ep2-c2"]
+    },
+    {
+      "id": "q12",
+      "type": "conceptual",
+      "query": "why word count chunking hurts retrieval quality",
+      "expectedChunkIds": ["ep3-c1"]
+    },
+    {
+      "id": "q13",
+      "type": "conceptual",
+      "query": "downsides of building graph indexes on large vector tables",
+      "expectedChunkIds": ["ep1-c1"]
+    },
+    {
+      "id": "q14",
+      "type": "conceptual",
+      "query": "concurrent reads during database writes in embedded storage",
+      "expectedChunkIds": ["ep5-c0"]
+    },
+    {
+      "id": "q15",
+      "type": "multi_turn",
+      "history": [
+        { "role": "user", "content": "How does pgvector HNSW work?" },
+        { "role": "assistant", "content": "HNSW builds a multi-layer navigable small world graph for sub-10ms ANN queries." }
+      ],
+      "query": "What are the memory trade-offs for it?",
+      "rewrittenQuery": "pgvector HNSW memory usage and index build time trade-offs",
+      "expectedChunkIds": ["ep1-c1"]
+    },
+    {
+      "id": "q16",
+      "type": "multi_turn",
+      "history": [
+        { "role": "user", "content": "How do you handle media-worker crashes?" },
+        { "role": "assistant", "content": "BullMQ retries failed jobs with exponential backoff." }
+      ],
+      "query": "How do you avoid redoing finished work when that happens?",
+      "rewrittenQuery": "BullMQ job retry prevent duplicate work JobStep completed",
+      "expectedChunkIds": ["ep2-c1"]
+    },
+    {
+      "id": "q17",
+      "type": "multi_turn",
+      "history": [
+        { "role": "user", "content": "Tell me about SQLite WAL mode." },
+        { "role": "assistant", "content": "WAL mode allows concurrent readers with a single writer." }
+      ],
+      "query": "How do you back it up to cloud storage?",
+      "rewrittenQuery": "SQLite WAL backup to S3 or Azure Blob Storage Litestream",
+      "expectedChunkIds": ["ep5-c1"]
+    },
+    {
+      "id": "q18",
+      "type": "unanswerable",
+      "query": "What is the best recipe for sourdough bread?",
+      "expectedChunkIds": []
+    }
+  ]
+}
