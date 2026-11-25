@@ -13,7 +13,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { semanticSearch, generateStreamingAnswer } from "@/lib/rag";
+import { semanticSearch, generateStreamingAnswer, rewriteQueryWithHistory } from "@/lib/rag";
 import type { ChatMessage, RetrievedChunk } from "@/lib/rag";
 import { checkRateLimit } from "@/lib/rag/rate-limiter";
 import { db } from "@/lib/db";
@@ -74,8 +74,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 4. Retrieve relevant chunks
-    const chunks = await semanticSearch(query.trim(), {
+    // 4. Contextualize follow-up queries and retrieve relevant chunks (hybrid search)
+    const conversationHistory = history || [];
+    const searchQuery = await rewriteQueryWithHistory(query.trim(), conversationHistory);
+    const chunks = await semanticSearch(searchQuery, {
       episodeId,
       podcastId,
       userId,
@@ -116,7 +118,6 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Generate streaming answer and tee/capture full text for persistence
-    const conversationHistory = history || [];
     const rawStream = await generateStreamingAnswer(
       query.trim(),
       chunks,

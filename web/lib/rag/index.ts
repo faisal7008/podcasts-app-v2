@@ -5,10 +5,12 @@
  * into a single pipeline: query → embed → retrieve → generate.
  */
 
-export { semanticSearch, embedQuery } from "./retriever";
+export { semanticSearch, embedQuery, computeRrfFusion } from "./retriever";
 export type { RetrievedChunk, RetrieveOptions } from "./retriever";
 
 export { generateStreamingAnswer, generateAnswer } from "./generator";
 export type { ChatMessage } from "./generator";
+
+export { rewriteQueryWithHistory } from "./rewriter";
 
 export { RAG_CONFIG } from "./openai";
