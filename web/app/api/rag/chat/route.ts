@@ -14,10 +14,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { semanticSearch, generateStreamingAnswer } from "@/lib/rag";
-import type { ChatMessage } from "@/lib/rag";
+import type { ChatMessage, RetrievedChunk } from "@/lib/rag";
 import { checkRateLimit } from "@/lib/rag/rate-limiter";
-import { getCachedEmbedding, setCachedEmbedding } from "@/lib/rag/cache";
-import { embedQuery } from "@/lib/rag/retriever";
 import { db } from "@/lib/db";
 import { chatConversation } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
@@ -84,24 +82,63 @@ export async function POST(request: NextRequest) {
       topK: 8,
     });
 
-    // 5. Generate streaming answer
+    // 5. Short-circuit if no relevant transcript chunks were found (saves LLM cost)
+    if (chunks.length === 0) {
+      const noMatchText =
+        "I couldn't find any relevant transcript excerpts for your question. Try rephrasing or asking about another topic covered in the podcast.";
+      const encoder = new TextEncoder();
+      const emptyStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encoder.encode(`${noMatchText}\n\n[SOURCES][]`));
+          controller.close();
+        },
+      });
+
+      if (conversationId) {
+        saveTurnToConversation(
+          conversationId,
+          userId,
+          query.trim(),
+          noMatchText,
+          [],
+          episodeId
+        ).catch(() => {});
+      }
+
+      return new Response(emptyStream, {
+        headers: {
+          "Content-Type": "text/event-stream",
+          "Cache-Control": "no-cache",
+          Connection: "keep-alive",
+          "X-RateLimit-Remaining": String(rateLimit.remaining),
+        },
+      });
+    }
+
+    // 6. Generate streaming answer and tee/capture full text for persistence
     const conversationHistory = history || [];
-    const stream = await generateStreamingAnswer(
+    const rawStream = await generateStreamingAnswer(
       query.trim(),
       chunks,
       conversationHistory
     );
 
-    // 6. Optionally save to conversation history (fire-and-forget)
+    let streamToReturn = rawStream;
     if (conversationId) {
-      // Don't await — let it happen in the background
-      saveToConversation(conversationId, userId, query.trim(), episodeId).catch(
-        () => {}
-      );
+      const [clientStream, persistStream] = rawStream.tee();
+      streamToReturn = clientStream;
+      persistStreamedTurn(
+        persistStream,
+        conversationId,
+        userId,
+        query.trim(),
+        chunks,
+        episodeId
+      ).catch(() => {});
     }
 
     // 7. Return streaming response
-    return new Response(stream, {
+    return new Response(streamToReturn, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
@@ -119,16 +156,68 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Save a user query to an existing or new conversation (fire-and-forget).
+ * Consume the tee'd response stream and persist both user and assistant messages.
  */
-async function saveToConversation(
+async function persistStreamedTurn(
+  stream: ReadableStream<Uint8Array>,
   conversationId: string,
   userId: string,
   query: string,
+  chunks: RetrievedChunk[],
+  episodeId?: string
+) {
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  let fullText = "";
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      fullText += decoder.decode(value, { stream: true });
+    }
+  } finally {
+    reader.releaseLock();
+  }
+
+  const answerText = fullText.split("\n\n[SOURCES]")[0].trim();
+  const sources = chunks.map((c) => ({
+    id: c.id,
+    episodeId: c.episodeId,
+    episodeTitle: c.episodeTitle,
+    podcastTitle: c.podcastTitle,
+    score: c.score,
+    timestamp: (c.metadata as Record<string, string>)?.first_timestamp || null,
+  }));
+
+  await saveTurnToConversation(
+    conversationId,
+    userId,
+    query,
+    answerText,
+    sources,
+    episodeId
+  );
+}
+
+/**
+ * Save a user + assistant turn to an existing or new conversation.
+ */
+async function saveTurnToConversation(
+  conversationId: string,
+  userId: string,
+  query: string,
+  answer: string,
+  sources: Record<string, unknown>[],
   episodeId?: string
 ) {
   try {
-    // Check if conversation exists
+    const now = new Date().toISOString();
+    const newEntries = [
+      { role: "user", content: query, timestamp: now },
+      { role: "assistant", content: answer, sources, timestamp: now },
+    ];
+
     const existing = await db
       .select()
       .from(chatConversation)
@@ -141,22 +230,20 @@ async function saveToConversation(
       .limit(1);
 
     if (existing.length > 0) {
-      // Append to existing conversation
-      const messages = (existing[0].messages as any[]) || [];
-      messages.push({ role: "user", content: query, timestamp: new Date().toISOString() });
+      const messages = (existing[0].messages as unknown[]) || [];
+      messages.push(...newEntries);
 
       await db
         .update(chatConversation)
         .set({ messages, updatedAt: new Date() })
         .where(eq(chatConversation.id, conversationId));
     } else {
-      // Create new conversation
       await db.insert(chatConversation).values({
         id: conversationId,
         userId,
         episodeId: episodeId || null,
         title: query.slice(0, 100),
-        messages: [{ role: "user", content: query, timestamp: new Date().toISOString() }],
+        messages: newEntries,
       });
     }
   } catch (err) {

@@ -18,22 +18,29 @@ import { checkRateLimit } from "@/lib/rag/rate-limiter";
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Authenticate (optional — allows anonymous search with limited results)
+    // 1. Authenticate (optional — allows anonymous search over published episodes)
     const session = await auth.api.getSession({ headers: await headers() });
     const userId = session?.user?.id;
 
-    // 2. Rate limit (only for authenticated users, anonymous is more restricted)
-    if (userId) {
-      const rateLimit = await checkRateLimit(userId, "search");
-      if (!rateLimit.allowed) {
-        return NextResponse.json(
-          {
-            error: "Rate limit exceeded",
-            resetInSeconds: rateLimit.resetInSeconds,
+    // 2. Rate limit (authenticated by userId, anonymous by client IP)
+    const forwardedFor = request.headers.get("x-forwarded-for");
+    const clientIp = forwardedFor?.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "anon";
+    const rateLimitKey = userId || `ip:${clientIp}`;
+    const rateLimit = await checkRateLimit(rateLimitKey, "search");
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          error: "Rate limit exceeded",
+          resetInSeconds: rateLimit.resetInSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            "Retry-After": String(rateLimit.resetInSeconds),
+            "X-RateLimit-Remaining": "0",
           },
-          { status: 429 }
-        );
-      }
+        }
+      );
     }
 
     // 3. Parse query params

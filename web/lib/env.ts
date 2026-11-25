@@ -18,6 +18,10 @@ const envSchema = z.object({
   AZURE_STORAGE_ACCOUNT_NAME: z.string().min(1),
   AZURE_STORAGE_ACCOUNT_KEY: z.string().min(1),
   AZURE_STORAGE_CONTAINER_NAME: z.string().default("podcasts"),
+  AZURE_OPENAI_API_KEY: z.string().min(1).optional(),
+  AZURE_OPENAI_ENDPOINT: z.string().url().optional(),
+  EMBEDDING_DEPLOYMENT_NAME: z.string().default("text-embedding-3-small"),
+  LLM_DEPLOYMENT_NAME: z.string().default("gpt-5.4-nano"),
   DATABASE_CA_CERT: z.string().optional(),
 });
 

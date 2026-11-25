@@ -14,6 +14,7 @@ import { db } from "@/lib/db";
 import { episodeChunk, episode, podcast } from "@/lib/db/schema";
 import { eq, sql, and, desc } from "drizzle-orm";
 import { getOpenAIClient, RAG_CONFIG } from "./openai";
+import { getCachedEmbedding, setCachedEmbedding } from "./cache";
 import { storageService } from "@/lib/storage";
 
 export interface RetrievedChunk {
@@ -45,8 +46,14 @@ export interface RetrieveOptions {
 
 /**
  * Embed a text query using the same model used for chunk embeddings.
+ * Checks Redis cache first to avoid redundant embedding API calls.
  */
 export async function embedQuery(query: string): Promise<number[]> {
+  const cached = await getCachedEmbedding(query);
+  if (cached) {
+    return cached;
+  }
+
   const client = getOpenAIClient();
 
   const result = await client.embeddings.create({
@@ -54,7 +61,9 @@ export async function embedQuery(query: string): Promise<number[]> {
     model: RAG_CONFIG.embeddingModel,
   });
 
-  return result.data[0].embedding;
+  const embedding = result.data[0].embedding;
+  await setCachedEmbedding(query, embedding);
+  return embedding;
 }
 
 /**
@@ -85,8 +94,11 @@ export async function semanticSearch(
   if (podcastId) {
     conditions.push(sql`e."podcastId" = ${podcastId}`);
   }
+  // Allow searching all published episodes, plus private/draft episodes owned by userId
   if (userId) {
-    conditions.push(sql`e."userId" = ${userId}`);
+    conditions.push(sql`(e.status = 'published' OR e."userId" = ${userId})`);
+  } else {
+    conditions.push(sql`e.status = 'published'`);
   }
 
   const whereClause =
