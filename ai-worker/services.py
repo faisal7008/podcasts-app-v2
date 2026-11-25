@@ -228,14 +228,8 @@ class DatabaseService:
                 )
 
                 # Batch insert new chunks
-                for chunk in chunks:
-                    conn.execute(
-                        """
-                        INSERT INTO "EpisodeChunk"
-                            (id, "episodeId", "chunkIndex", content, embedding,
-                             "startOffset", "endOffset", metadata, "createdAt")
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                        """,
+                if chunks:
+                    rows = [
                         (
                             str(uuid.uuid4()),
                             episode_id,
@@ -245,8 +239,19 @@ class DatabaseService:
                             chunk.get("start_offset", 0),
                             chunk.get("end_offset", 0),
                             json.dumps(chunk.get("metadata", {})),
-                        ),
-                    )
+                        )
+                        for chunk in chunks
+                    ]
+                    with conn.cursor() as cur:
+                        cur.executemany(
+                            """
+                            INSERT INTO "EpisodeChunk"
+                                (id, "episodeId", "chunkIndex", content, embedding,
+                                 "startOffset", "endOffset", metadata, "createdAt")
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                            """,
+                            rows,
+                        )
 
                 logger.info(
                     "chunks_saved",
@@ -497,43 +502,50 @@ class AIService:
         chunk_size: int = 500,
         chunk_overlap: int = 50,
     ) -> List[Dict[str, Any]]:
-        """Split a transcript into overlapping token-based chunks.
-        
-        Uses whitespace tokenization (word-level) as a lightweight proxy for 
-        subword tokens. Each chunk records character offsets for tracing back 
-        to the original transcript.
-        
+        """Split a transcript into overlapping, boundary-aware chunks in O(N) time.
+
+        Prefers timestamped line / sentence boundaries so chunks remain coherent,
+        while respecting chunk_size (in words) and chunk_overlap.
         Returns a list of dicts with: content, chunk_index, start_offset, end_offset, metadata.
         """
         if not transcript or not transcript.strip():
             return []
 
-        words = transcript.split()
-        chunks = []
+        # Tokenize with exact character spans in O(N)
+        word_spans = [(m.group(0), m.start(), m.end()) for m in re.finditer(r"\S+", transcript)]
+        if not word_spans:
+            return []
+
+        # Identify preferred boundary word indices (end of timestamped lines or sentences)
+        boundary_indices = set()
+        for idx, (word, _s, end_pos) in enumerate(word_spans):
+            has_newline_after = end_pos < len(transcript) and "\n" in transcript[end_pos : end_pos + 2]
+            if has_newline_after or word.endswith((".", "!", "?")):
+                boundary_indices.add(idx)
+
+        chunks: List[Dict[str, Any]] = []
         chunk_index = 0
+        n = len(word_spans)
         i = 0
 
-        while i < len(words):
-            chunk_words = words[i : i + chunk_size]
-            chunk_text = " ".join(chunk_words)
+        while i < n:
+            target_end = min(i + chunk_size, n)
+            actual_end = target_end
 
-            # Calculate character offsets in the original transcript
-            # Find the start of the first word of this chunk
-            start_offset = 0
-            word_count = 0
-            for ci, ch in enumerate(transcript):
-                if word_count == i:
-                    start_offset = ci
-                    break
-                if ch == ' ' or ch == '\n':
-                    if ci + 1 < len(transcript) and transcript[ci + 1] not in (' ', '\n'):
-                        word_count += 1
+            # Snap backward to nearest sentence/line boundary within the last 20% of the window
+            if target_end < n:
+                min_snap = i + max(1, int(chunk_size * 0.8))
+                for cand in range(target_end - 1, min_snap - 1, -1):
+                    if cand in boundary_indices:
+                        actual_end = cand + 1
+                        break
 
-            end_offset = min(start_offset + len(chunk_text), len(transcript))
+            start_offset = word_spans[i][1]
+            end_offset = word_spans[actual_end - 1][2]
+            chunk_text = " ".join(w[0] for w in word_spans[i:actual_end])
 
-            # Extract timestamp metadata from chunk if available
-            timestamps = re.findall(r'\[(\d{2}:\d{2}(?::\d{2})?)\]', chunk_text)
-            metadata = {}
+            timestamps = re.findall(r"\[(\d{2}:\d{2}(?::\d{2})?)\]", chunk_text)
+            metadata: Dict[str, Any] = {}
             if timestamps:
                 metadata["first_timestamp"] = timestamps[0]
                 metadata["last_timestamp"] = timestamps[-1]
@@ -546,14 +558,16 @@ class AIService:
                 "metadata": metadata,
             })
 
+            if actual_end >= n:
+                break
+
             chunk_index += 1
-            # Advance by (chunk_size - overlap) to create overlapping windows
-            step = max(1, chunk_size - chunk_overlap)
+            step = max(1, (actual_end - i) - chunk_overlap)
             i += step
 
         logger.info(
             "transcript_chunked",
-            total_words=len(words),
+            total_words=n,
             chunk_count=len(chunks),
             chunk_size=chunk_size,
             overlap=chunk_overlap,

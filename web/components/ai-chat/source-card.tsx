@@ -17,7 +17,7 @@ interface SourceCardProps {
 export function SourceCard({ source, index }: SourceCardProps) {
   const player = usePlayer();
 
-  const handleTimestampClick = () => {
+  const handleTimestampClick = async () => {
     if (!source.timestamp) return;
 
     // Parse timestamp (MM:SS or HH:MM:SS) to seconds
@@ -29,9 +29,22 @@ export function SourceCard({ source, index }: SourceCardProps) {
       seconds = parts[0] * 60 + parts[1];
     }
 
-    // If this episode is currently playing, seek to the timestamp
+    // If this episode is already loaded, seek directly; otherwise load & seek
     if (player.currentEpisode?.id === source.episodeId) {
       player.seek(seconds);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/episodes/${encodeURIComponent(source.episodeId)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data?.episode) {
+        player.play(data.episode);
+        setTimeout(() => player.seek(seconds), 250);
+      }
+    } catch {
+      // Non-fatal if episode fetch fails
     }
   };
 
