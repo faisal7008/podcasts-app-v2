@@ -10,15 +10,33 @@ import { db } from "@/lib/db";
  *
  * IMPORTANT: Never log passwords, tokens, or session values.
  */
+const normalizeOrigin = (url?: string): string | null => {
+  if (!url) return null;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+};
+
+const trustedOrigins = Array.from(
+  new Set(
+    [
+      normalizeOrigin(process.env.NEXT_PUBLIC_APP_URL),
+      normalizeOrigin(process.env.BETTER_AUTH_URL),
+      ...(process.env.TRUSTED_ORIGINS?.split(",").map((u) => normalizeOrigin(u.trim())) ?? []),
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://podcasts-ai-app.vercel.app",
+    ].filter((v): v is string => Boolean(v))
+  )
+);
+
 export const auth = betterAuth({
   database: drizzleAdapter(db, { provider: "pg" }),
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: [
-    process.env.NEXT_PUBLIC_APP_URL as string,
-    process.env.BETTER_AUTH_URL as string,
-    "http://localhost:3000",
-    "https://podcasts-ai-app.vercel.app"
-  ].filter(Boolean),
+  baseURL: normalizeOrigin(process.env.BETTER_AUTH_URL) ?? undefined,
+  trustedOrigins,
 
   socialProviders: {
     google: {
